@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 19
+names: ['bicycle', 'big bus', 'big truck', 'bus', 'bus-l-', 'bus-s-', 'cab', 'car', 'mid truck', 'motorbike', 'person', 'rikshaw', 'small bus', 'small truck', 'truck', 'truck-l-', 'truck-m-', 'truck-s-', 'truck-xl-']
+
+roboflow:
+  workspace: sha-citmv
+  project: vehicles-tucnv
+  version: 2
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/sha-citmv/vehicles-tucnv/dataset/2

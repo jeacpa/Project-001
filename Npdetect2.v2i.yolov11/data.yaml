@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['cars']
+
+roboflow:
+  workspace: npyolo
+  project: npdetect2
+  version: 2
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/npyolo/npdetect2/dataset/2
