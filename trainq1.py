@@ -14,6 +14,8 @@ def train():
         device = 'cpu'
     )
 
+    # Change
+
     print("Training complete. Results:")
 if __name__ == '__main__':
 
