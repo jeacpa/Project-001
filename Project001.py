@@ -2,7 +2,7 @@ import cv2 as cv
 import numpy as np
 
 cap = cv.VideoCapture("Cashmere.MP4")
-cap2 = cv.VideoCapture(0)
+# cap2 = cv.VideoCapture(0)
 framecount = cap.get(cv.CAP_PROP_FRAME_COUNT)
 print("frames:",framecount)
 # cap = cv.VideoCapture(0)
@@ -65,7 +65,7 @@ def findObjects(outputs, img):
 
 
 while cap.isOpened():
-    success, img = cap2.read()
+    success, img = cap.read()
     if success is not True:
         break
     # imgsize = list(img.shape)
