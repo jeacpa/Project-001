@@ -9,3 +9,11 @@
 ### https://www.sciencedirect.com/science/article/pii/S0925231223007506?via%3Dihub
 #
 #
+### Milestones
+#
+#### - Create vehicle counter(s) (issue #13)
+#
+#### - Create traffic signal in upper right of screen (issue 14)
+#
+#### - Create database to store metrics and attributes
+#
