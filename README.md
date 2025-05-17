@@ -12,8 +12,8 @@
 ### Milestones
 #
 #### - Create vehicle counter(s) (issue #13)
-#
 #### - Create traffic signal in upper right of screen (issue 14)
-#
 #### - Create database to store metrics and attributes
+#### - Create Power Point presentation for demo to Education Foundation Board (presentation in July 2025)
 #
+
