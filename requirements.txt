@@ -1,0 +1,5 @@
+opencv-python==4.11.0.86
+flet==0.28.2
+ultralytics==8.3.139
+cvzone==1.6.1
+flet[all]==0.28.2
