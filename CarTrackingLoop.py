@@ -18,7 +18,8 @@ cv2.namedWindow("YOLO11 Tracking", cv2.WINDOW_NORMAL)
 cv2.resizeWindow("YOLO11 Tracking", 1920,1080)
 vboxsize = 3
 vboxes = False
-classes = [0 , 2]
+
+tracking_classes = [1, 2, 3, 5, 7]
 
 frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -32,9 +33,52 @@ line_y = int(frame_height * 0.3)
 line_color = (0, 255, 255)  # Yellow line
 line_thickness = 3
 line_count = []
-line_on = False
-traffic_light = False
 
+countdown = 10
+line_on = False
+traffic_light = True
+red_light = (0, 0, 255)
+yellow_light = (0, 255, 255)
+green_light = (0, 255, 0)
+black_light = (65, 74, 76)
+light_color = red_light
+
+
+def change_light(light_color):
+    x, y, w, h = 1800, 1, 80, 300  # x, y coordinates, width, height
+    padding = 7
+    circle_radius = (w - 2 * padding) // 2
+
+    # Draw the black rectangle for the traffic light
+    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 0), -1)
+
+    if light_color == red_light:
+        # Draw the red light
+        cv2.circle(frame, (x + w // 2, y + h // 4), circle_radius, red_light, -1)
+        cv2.circle(frame, (x + w // 2, y + h // 2), circle_radius, black_light, -1)
+        cv2.circle(frame, (x + w // 2, y + 3 * h // 4), circle_radius, black_light, -1)
+        return light_color
+
+    elif light_color == yellow_light:
+        # Draw the yellow light
+        cv2.circle(frame, (x + w // 2, y + h // 4), circle_radius, black_light, -1)
+        cv2.circle(frame, (x + w // 2, y + h // 2), circle_radius, yellow_light, -1)
+        cv2.circle(frame, (x + w // 2, y + 3 * h // 4), circle_radius, black_light, -1)
+        return light_color
+
+    elif light_color == green_light:
+        # Draw the green light
+        cv2.circle(frame, (x + w // 2, y + h // 4), circle_radius, black_light, -1)
+        cv2.circle(frame, (x + w // 2, y + h // 2), circle_radius, black_light, -1)
+        cv2.circle(frame, (x + w // 2, y + 3 * h // 4), circle_radius, green_light, -1)
+        return light_color
+
+    elif light_color == black_light:
+        # Draw the green light
+        cv2.circle(frame, (x + w // 2, y + h // 4), circle_radius, black_light, -1)
+        cv2.circle(frame, (x + w // 2, y + h // 2), circle_radius, black_light, -1)
+        cv2.circle(frame, (x + w // 2, y + 3 * h // 4), circle_radius, black_light, -1)
+        return light_color
 
 # Init TrackZone (Object Tracking in Zones, not complete frame)
 trackzone = solutions.TrackZone(
@@ -66,8 +110,9 @@ next_object_id = 0
 car_counter = 0
 
 # Countdown timer settings
-timer_duration = 10  # seconds
-last_reset_time = time.time()  # resets each time a vehicle crosses the line
+
+# timer_duration = 10  # seconds
+# last_reset_time = time.time()  # resets each time a vehicle crosses the line
 
 def get_centroid(box):
     """Compute centroid given a bounding box (x1, y1, x2, y2)."""
@@ -110,49 +155,74 @@ while cap.isOpened():
     if success:
 
         # Run YOLO11 tracking on the frame, persisting tracks between frames
-        results = model.track(frame, persist=True, classes = [0, 1, 2, 3, 5, 7])
+
+        results = model.track(frame, persist=True, classes = tracking_classes)
+        boxes = results[0].boxes.xywh.cpu()
+        print(boxes)
+
         #print(results)
 
         # Visualize the results on the frame
-        # annotated_frame = results[0].plot(line_width=vboxsize,conf=False,boxes=vboxes)
-        frame = results[0].plot(line_width=vboxsize, conf=False, boxes=vboxes)
+        annotated_frame = results[0].plot(line_width=vboxsize,conf=False,boxes=vboxes)
+        frame = results[0].plot(line_width=vboxsize, conf=True, boxes=vboxes)
         # Calculate the countdown timer value
-        elapsed = time.time() - last_reset_time
-        countdown = max(0, timer_duration - elapsed)
+        if light_color == green_light:
+            elapsed = time.time() - last_reset_time
+            countdown = max(0, timer_duration - elapsed)
+            # timer_duration = 10  # seconds
+            # last_reset_time = time.time()  # resets each time a vehicle crosses the line
 
         # Display the timer and vehicle count on the frame
         cv2.putText(frame, f"Timer: {int(countdown)}s", (10, 50),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
-        cv2.putText(frame, f"Vehicles Passed: {line_count}", (10, 90),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+        cv2.putText(frame, f"Vehicles: {line_count}", (10, 90),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
         if line_on:
-            cv2.line(frame, (550, line_y + 40), (1200, line_y), line_color, line_thickness)
+            cv2.line(frame, (545, line_y + 30), (890, line_y), line_color, line_thickness)
 
         if traffic_light:
-            # Traffic light dimensions and position
-            x, y, w, h = 50, 50, 80, 200  # x, y coordinates, width, height
-            padding = 5
-            circle_radius = (w - 2 * padding) // 2
+            change_light(light_color)
+            if frame_counter == 900:
+                light_color = green_light
+                vlight = change_light(light_color)
+                timer_duration = 10  # seconds
+                last_reset_time = time.time()  # resets each time a vehicle crosses the line
 
-            # Draw the black rectangle for the traffic light
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 0), -1)
+            elif frame_counter == 3200:
+                light_color = yellow_light
+                vlight = (yellow_light)
 
-            # Draw the red light
-            cv2.circle(frame, (x + w // 2, y + h // 4), circle_radius, (0, 0, 255), -1)
+            elif frame_counter == 3300:
+                light_color = red_light
+                vlight = change_light(light_color)
 
-            # Draw the yellow light
-            cv2.circle(frame, (x + w // 2, y + h // 2), circle_radius, (0, 255, 255), -1)
-
-            # Draw the green light
-            cv2.circle(frame, (x + w // 2, y + 3 * h // 4), circle_radius, (0, 255, 0), -1)
+            # # Traffic light dimensions and position
+            # x, y, w, h = 1800, 1, 80, 300  # x, y coordinates, width, height
+            # padding = 7
+            # circle_radius = (w - 2 * padding) // 2
+            #
+            # # Draw the black rectangle for the traffic light
+            # cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 0), -1)
+            #
+            # # Draw the red light
+            # cv2.circle(frame, (x + w // 2, y + h // 4), circle_radius, red_light, -1)
+            #
+            # # Draw the yellow light
+            # cv2.circle(frame, (x + w // 2, y + h // 2), circle_radius, yellow_light, -1)
+            #
+            # # Draw the green light
+            # cv2.circle(frame, (x + w // 2, y + 3 * h // 4), circle_radius, green_light, -1)
 
         # Display the annotated frame
         #cv2.imshow("YOLO11 Tracking", annotated_frame)
         cv2.imshow("YOLO11 Tracking", frame)
         #print(car_counter)
 
-        #frame = trackzone.trackzone(annotated_frame)
-        #frame = counter.count(annotated_frame)
+
+        # frame2 = trackzone.trackzone(annotated_frame)
+        # frame2 = counter.count(annotated_frame)
+        # qcv2.imshow("YOLO11 Trackzone", annotated_frame)
 
         # Break the loop if 'q' is pressed
         key = cv2.waitKey(1)
@@ -173,10 +243,32 @@ while cap.isOpened():
 
         elif key == ord("t"):
             if traffic_light == True:
+
+                vlight = change_light(light_color)
                 traffic_light = False
             else: traffic_light = True
 
+        elif key == ord("w"):
+            light_color = red_light
+            vlight = change_light(light_color)
+            timer_duration = 10  # seconds
+            elapsed = 0
+            countdown = max(0, timer_duration - elapsed)
+
+        elif key == ord("s"):
+            light_color = yellow_light
+            vlight = change_light(light_color)
+
+        elif key == ord("x"):
+            light_color = green_light
+            vlight = change_light(light_color)
+            timer_duration = 10  # seconds
+            last_reset_time = time.time()  # resets each time a vehicle crosses the line
+
         elif key == ord("q"):
+            print("q", line_y, traffic_light, frame_counter)
+            print(centroid)
+            # print(vlight)
             break
         # if cv2.waitKey(1) & 0xFF == ord("q"):
         #    break
