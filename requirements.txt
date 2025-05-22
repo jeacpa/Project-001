@@ -1,0 +1,6 @@
+opencv-python
+flet
+ultralytics
+cvzone
+flet[all]
+
