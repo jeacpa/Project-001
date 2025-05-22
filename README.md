@@ -67,7 +67,11 @@ In this list you should see all the available linux distros.  For our purposes w
 > wsl -–install -d Ubuntu-24.04
 ```
 
-During install you will be prompted to create a username and password.  Enter what you like but make sure to remember the login.
+During install you will be prompted to create a username and password.  Enter what you like but make sure to remember the login.  After install launch Linux with:
+
+```
+> wsl -d Ubuntu-24.04
+```
 
 Once installed you will be sitting on a new command prompt which is running Linux.
 At the new Linux prompt update the package manager with the following commands:
@@ -77,13 +81,13 @@ $ sudo apt update
 $ sudo apt full-upgrade
 ```
 
-You should now have an item in your Windows start menu called “Ubuntu 24.04.1 LTS”.  Clicking on this will launch a command line that is running Linux.
+You should now have an item in your Windows start menu called “Ubuntu 24.04.1 LTS”.  Clicking on this will launch a command line that is running Linux.  __Do this now__.
 
 ### Step 3: Install the CUDA development kit
 
 The NVIDIA  CUDA development kit allows the open computer vision libraries we will use later to speak directly to your GPU.
 
-At the Linux prompt that you started from the previous step (Install Ubuntu on WSL) enter the following commands
+At the Linux prompt that you started from the previous step (Install Ubuntu on WSL) enter the following commands:
 ```
 $ wget https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-keyring_1.1-1_all.deb
 
@@ -113,7 +117,7 @@ $ xeyes
 ```
 This should create a new window on your Windows desktop with some eyes.
 
-### Step 5: Setup and Run Project001
+### Step 5: Setup Python
 
 We should now have the proper requirements for running Project001 with GPU acceleration.  To run Project001 we will use a tool called `conda` to:
 * set up a python “virtual environment” and 
@@ -126,7 +130,7 @@ $ wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 $ bash Miniconda3-latest-Linux-x86_64.sh
 ```
 (This will prompt you a few times and you should just answer YES to any yes/no questions)
- 
+
 In order for the install to take effect, close your current Linux prompt window and open it again (when you re-open a new prompt you should see “(base)” and the beginning of your prompt).
 
 Now we will create a new virtual environment for Project001 called “work” with the following command:
@@ -148,12 +152,55 @@ You should see 3.12.3 if python is set up correctly.
 
 Note: Whenever you want to work on Project001 you will open a Linux prompt and you will first need to run ‘conda activate work’ as above.
 
+### Step 6: Configure GIT (optional)
+
+If you've already configured git with your ssh key then you can skip this step.
+
+From your Linux prompt run the following command:
+
+```
+$ ssh-keygen -t ed25519
+```
+
+You should be able to hit enter for the defaults and for now we can leave the passphrase blank.  This will generate a public and private key file.  Let's get the public key with the following commands:
+
+```
+$ cd ~/.ssh
+
+$ cat id_ed25519.pub
+```
+
+The above will display a line of text that starts with `ssh-ed25519` and ends with your user name.  Use your mouse to select this entire line of text then hit enter to copy it to the clipboard.
+
+Go to your Github keys page [here](https://github.com/settings/keys).
+
+Note: You may need to login.
+
+Click "New SSH key"
+
+For Title you can enter anything but typically you would use the name of your computer and perhaps a reference to wsl, eg: "mycomputer-wsl"
+
+Leave Key type as "Authentication Key".
+
+For the Key, right click on the field and select paste.
+
+Now click Add SSH key and you are ready to start using git from wsl.
+
+(For more detailed instructions and how to be even more secure on setting your SSH key with github you can visit [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent))
+
+### Step 7: Install and Run Project001
 Now let's get the code for Project001.  In your Linux prompt go to home directory and run the following:
 ```
 $ git clone git@github.com:jeacpa/Project-001.git 
 ```
 
-(This will require that you have set up your ssh key for github.  You can follow directions [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent).)
+(If you encounter a security error go back to Step 6)
+
+If you haven't done so aleady make sure you have activated your environment with the command:
+
+```
+$ conda activate work
+```
 
 Install all the dependencies for Project001 with the following commands:
 ```
@@ -166,7 +213,7 @@ Almost there! The last thing we need to do is download a sample video for Projec
 
 We need to copy the video to the Project001 folder.  Open your Downloads folder by clicking the Start Menu and type ‘\’ then hit enter.  Click on Downloads in the left list, right click on Cashmere.mp4 and select Copy.
 
-Now we need to open the Project001 folder, click on the Start Menu, type the following:
+Now we need to open the Project001 folder that exists in your wsl environment, click on the Start Menu, type the following:
 ```
 \\wsl$
 ```
