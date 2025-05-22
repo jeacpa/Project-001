@@ -1,0 +1,4 @@
+[MASTER]
+disable=C0114,C0103,C0116,C0115
+extension-pkg-whitelist=cv2,PyQt5
+generated-members=cv2.*,PyQt5.*
