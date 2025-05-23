@@ -4,7 +4,9 @@ import base64
 import flet as ft
 import numpy as np  # Import numpy for frame handling
 from ultralytics import YOLO
-from drawing import process_video  # Import the process_video function from the drawing module
+from drawing import (
+    process_video,
+)  # Import the process_video function from the drawing module
 
 # Load YOLOv8 model
 model = YOLO("yolov10n.pt")
@@ -18,7 +20,9 @@ class Task(ft.Container):
         self.video_url = video_url
         self.task_delete = task_delete
         self.edit_name = ft.TextField(expand=1, multiline=True, border_color="Green500")
-        self.video_image = ft.Image(border_radius=ft.border_radius.all(0), src_base64="")
+        self.video_image = ft.Image(
+            border_radius=ft.border_radius.all(0), src_base64=""
+        )
         self.display_view = ft.Container(
             bgcolor=ft.colors.WHITE,
             padding=0,
@@ -77,9 +81,7 @@ class Task(ft.Container):
                 ),
             ],
         )
-        self.content = ft.Column(
-            controls=[self.display_view, self.edit_view]
-        )
+        self.content = ft.Column(controls=[self.display_view, self.edit_view])
 
     def edit_clicked(self, e):
         self.edit_name.value = self.task_name
@@ -103,8 +105,9 @@ class Task(ft.Container):
 
     def capture_video(self):
         # Pass both video_url and task_name to process_video
-        for frame_bytes in process_video(self.video_url,
-                                         self.task_name):  # process_video can handle individual task processing
+        for frame_bytes in process_video(
+            self.video_url, self.task_name
+        ):  # process_video can handle individual task processing
             # process_video can handle individual task processing
             # Check if the frame_bytes is a base64 string
             if isinstance(frame_bytes, str):
@@ -118,14 +121,20 @@ class Task(ft.Container):
             # Ensure that frame_bytes is of type bytes before encoding
             if isinstance(frame_bytes, bytes):
                 # Update the Flet interface
-                self.video_image.src_base64 = base64.b64encode(frame_bytes).decode('utf-8')
+                self.video_image.src_base64 = base64.b64encode(frame_bytes).decode(
+                    "utf-8"
+                )
                 self.update()  # Update the Flet interface
 
                 # Display the current frame in an OpenCV window
-                frame = cv2.imdecode(np.frombuffer(frame_bytes, np.uint8), cv2.IMREAD_COLOR)
-                cv2.imshow(self.task_name, frame)  # Show frame in OpenCV window with unique window name
+                frame = cv2.imdecode(
+                    np.frombuffer(frame_bytes, np.uint8), cv2.IMREAD_COLOR
+                )
+                cv2.imshow(
+                    self.task_name, frame
+                )  # Show frame in OpenCV window with unique window name
 
-                if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to exit
+                if cv2.waitKey(1) & 0xFF == ord("q"):  # Press 'q' to exit
                     break  # Exit the loop if 'q' is pressed
             else:
                 print("frame_bytes is not of type bytes.")
@@ -175,9 +184,7 @@ def main(page: ft.Page):
     page.scroll = "auto"
 
     # Add custom fonts
-    page.fonts = {
-        "Quicksand": "C:/Users/vbege/Downloads/Quicksand[wght].ttf"
-    }
+    page.fonts = {"Quicksand": "C:/Users/vbege/Downloads/Quicksand[wght].ttf"}
 
     todo_app = TodoApp()
 
@@ -198,9 +205,15 @@ def main(page: ft.Page):
         video_field = ft.TextField(label="URL to live feed", border_color="Green500")
         dialog = ft.AlertDialog(
             title=ft.Text("Enter Street and Live Feed URL"),
-            content=ft.Column([task_field, video_field], alignment=ft.MainAxisAlignment.CENTER),
-            actions=[ft.TextButton(on_click=on_submit, icon="ARROW_FORWARD", icon_color="green400")],
-            alignment=ft.alignment.center
+            content=ft.Column(
+                [task_field, video_field], alignment=ft.MainAxisAlignment.CENTER
+            ),
+            actions=[
+                ft.TextButton(
+                    on_click=on_submit, icon="ARROW_FORWARD", icon_color="green400"
+                )
+            ],
+            alignment=ft.alignment.center,
         )
         page.overlay.append(dialog)
         dialog.open = True
@@ -254,8 +267,9 @@ def main(page: ft.Page):
         expand=1,
     )
 
-    page.floating_action_button = ft.FloatingActionButton(icon=ft.icons.ADD, on_click=fab_pressed,
-                                                          bgcolor=ft.colors.GREEN_500)
+    page.floating_action_button = ft.FloatingActionButton(
+        icon=ft.icons.ADD, on_click=fab_pressed, bgcolor=ft.colors.GREEN_500
+    )
     page.add(tabs_theme)
 
 

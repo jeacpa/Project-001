@@ -68,7 +68,7 @@ def update_trackers(detections, trackers, next_object_id, distance_threshold=100
     for box, label in detections:
         centroid = get_centroid(box)
         best_id = None
-        min_dist = float('inf')
+        min_dist = float("inf")
         for obj_id, (prev_centroid, counted) in trackers.items():
             dist = np.linalg.norm(np.array(centroid) - np.array(prev_centroid))
             if dist < distance_threshold and dist < min_dist:
@@ -116,8 +116,9 @@ while cap.isOpened():
                 # Set color based on type
                 color = (0, 255, 0) if label in vehicle_classes else (255, 0, 0)
                 cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                cv2.putText(frame, label, (x1, y1 - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                cv2.putText(
+                    frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2
+                )
                 # Draw the centroid for visualization
                 centroid = get_centroid((x1, y1, x2, y2))
                 cv2.circle(frame, centroid, 5, (0, 0, 255), -1)
@@ -126,7 +127,9 @@ while cap.isOpened():
                     detections_vehicle.append(((x1, y1, x2, y2), label))
 
     # Update the tracker with the current vehicle detections
-    trackers, next_object_id = update_trackers(detections_vehicle, trackers, next_object_id)
+    trackers, next_object_id = update_trackers(
+        detections_vehicle, trackers, next_object_id
+    )
 
     # Check for vehicles crossing the counting line (assumes vehicles are moving downward)
     for obj_id, (centroid, counted) in trackers.items():
@@ -142,10 +145,24 @@ while cap.isOpened():
     countdown = max(0, timer_duration - elapsed)
 
     # Display the timer and vehicle count on the frame
-    cv2.putText(frame, f"Timer: {int(countdown)}s", (10, 50),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
-    cv2.putText(frame, f"Vehicles Passed: {line_count}", (10, 90),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    cv2.putText(
+        frame,
+        f"Timer: {int(countdown)}s",
+        (10, 50),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1,
+        (255, 255, 0),
+        2,
+    )
+    cv2.putText(
+        frame,
+        f"Vehicles Passed: {line_count}",
+        (10, 90),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1,
+        (0, 0, 255),
+        2,
+    )
     cv2.line(frame, (0, line_y), (frame_width, line_y), line_color, line_thickness)
 
     cv2.imshow("Intersection Detection", frame)
