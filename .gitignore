@@ -2,6 +2,9 @@
 *.pt
 *.weights
 *.MP4
+*.mp4
 *.avi
 *.idea
 *:Zone.Identifier
+**/__pycache__/
+.vscode

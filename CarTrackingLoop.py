@@ -1,7 +1,6 @@
 import bisect
 from dataclasses import dataclass
 from enum import Enum
-import time
 from typing import List, Tuple
 import cv2
 
@@ -10,12 +9,12 @@ from ultralytics import YOLO
 from ultralytics.engine.results import Results
 from ultralytics.solutions.solutions import SolutionAnnotator
 from ultralytics import solutions
-import tkinter as tk
 
 
 import logging
 
 from Clients.sql import SqlClient
+from util import utc_now
 
 logging.getLogger("ultralytics").setLevel(logging.ERROR)
 
@@ -37,11 +36,21 @@ class TrackingData:
     class_id: int
     counted: bool
 
-
 WINDOW_NAME = "YOLO11 Tracking"
+
+MODEL_NAME = "yolo11n.pt"
+
+OUTPUT_VIDEO = "vidout.mp4"
 
 COUNT_ZONE = [(506, 360), (910, 316), (1521, 662), (778, 746)]
 
+LANE_COUNT_ZONES = {
+    "1": [(506, 360), (656, 341), (1025, 721), (778, 744)],
+    "2": [(606, 351), (710, 337), (1141, 703), (973, 723)],
+    "3": [(669, 339), (754, 330), (1250, 692), (1100, 709)],
+    "4": [(733, 334), (806, 325), (1262, 680), (1199, 698)],
+    "5": [(790, 327), (910, 313), (1515, 657), (1333, 683)],
+}
 YELLOW_LIGHT = (0, 255, 255)
 GREEN_LIGHT = (0, 255, 0)
 BLACK_LIGHT = (65, 74, 76)
@@ -54,7 +63,7 @@ TEXT_THICKNESS = 2
 
 # Bicycle, Car, Motorcycle, Bus, Truck
 TRACKING_CLASSES = [1, 2, 3, 5, 7]
-TRACKING_LABELS = {1: "Y", 2: "C", 3: "M", 5: "B", 7: "T"}
+TRACKING_LABELS = {1: "Bike", 2: "Car", 3: "Moto", 5: "Bus", 7: "Truck"}
 LINE_COLOR = (0, 255, 255)  # Yellow line
 LINE_THICKNESS = 3
 
@@ -98,6 +107,7 @@ class Expiriment:
     in_count: int
     out_count: int
     saved_counted: set
+    save_events: bool
 
     def __init__(
         self,
@@ -107,15 +117,13 @@ class Expiriment:
         show_text: bool = True,
         show_light: bool = False,
         show_mouse: bool = False,
+        save_events: bool = False,
     ):
-
-        # self.model = YOLO("yolo11n.pt")
-
         # Use ultralytics counter to manage tracking along with zone detection
         self.counter = solutions.ObjectCounter(
             show=False,  # Display the output
             region=COUNT_ZONE,  # Pass region points
-            model="yolo11n.pt",  # model="yolo11n-obb.pt" for object counting using YOLO11 OBB model.
+            model=MODEL_NAME,  # model="yolo11n-obb.pt" for object counting using YOLO11 OBB model.
             classes=TRACKING_CLASSES,  # If you want to count specific classes i.e person and car with COCO pretrained model.
             show_in=False,  # Display in counts
             show_out=False,  # Display out counts
@@ -134,7 +142,7 @@ class Expiriment:
         self.window_exists = False
         self.light_color = LightColor.RED
         self.saved_counted = set()
-
+        self.save_events = save_events
         # Hack: Verbose false on model does not seem to silence output
         #       Reaching into internal structure to get this done
         self.model.overrides["verbose"] = False
@@ -258,9 +266,11 @@ class Expiriment:
             return
 
         for td in self.tracking_data:
+            if not td.counted:
+                continue
             x1, y1, x2, y2 = map(int, td.box)
             label = TRACKING_LABELS[td.class_id]
-            label = f"{td.id}/{label}"
+            label = f"{label}/{td.id}"
 
             (text_width, text_height), baseline = cv2.getTextSize(
                 label, cv2.FONT_HERSHEY_SIMPLEX, BOX_TEXT_SCALE, BOX_TEXT_THICKNESS
@@ -283,7 +293,7 @@ class Expiriment:
             self._inverse_text(
                 frame,
                 label,
-                (text_x, text_y),
+                (x1, y1),
                 BOX_TEXT_COLOR,
                 BOX_TEXT_THICKNESS,
                 BOX_TEXT_SCALE,
@@ -317,7 +327,6 @@ class Expiriment:
         )
 
     def _analyze_frame(self, frame):
-        # results = self.model.track(frame, persist=True, classes = TRACKING_CLASSES)
         inout = self.counter.process(frame)
         counted_ids = set(self.counter.counted_ids)
 
@@ -399,15 +408,34 @@ class Expiriment:
                 to_save.append(td)
 
         conn.insert_batch(
-            "tbltrackingevents",
-            ["name", "attributes"],
-            [("counted", {"id": td.id}) for td in to_save],
+            "tbl_event",
+            ["created_at", "name", "attributes"],
+            [(utc_now(), "counted", {"id": td.id}) for td in to_save],
         )
 
         for td in to_save:
             self.saved_counted.add(td.id)
 
-    def run_video_analysis(self):
+    def _open_writer(self):
+        width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+        height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        fps = self.cap.get(cv2.CAP_PROP_FPS)
+        fourcc = cv2.VideoWriter_fourcc(*"XVID")
+        return cv2.VideoWriter(
+            OUTPUT_VIDEO,
+            fourcc,
+            fps,
+            (int(width), int(height)),
+        )
+
+    def process(self):
+        if self.save_events:
+            with SqlClient() as conn:
+                self._run_video_analysis(conn)
+        else:
+            self._run_video_analysis()
+
+    def _run_video_analysis(self, conn: SqlClient = None):
 
         print("Loading video...")
 
@@ -416,7 +444,7 @@ class Expiriment:
         # Start 27s in to skip initial cross traffic
         self.cap.set(cv2.CAP_PROP_POS_MSEC, 27000)
 
-        saved_counted = set()
+        writer = self._open_writer()
 
         with SqlClient() as conn:
             while self.cap.isOpened() and not self.should_exit:
@@ -436,18 +464,20 @@ class Expiriment:
                     self.window_exists = True
 
                 cv2.imshow(WINDOW_NAME, frame_out)
-
+                writer.write(frame_out)
                 self._check_input()
 
-                self._write_events(conn)
+                if conn:
+                    self._write_events(conn)
 
+        writer.release()
         self.cap.release()
 
         cv2.destroyAllWindows()
 
 
 exp = Expiriment("Cashmere.MP4")
-exp.run_video_analysis()
+exp.process()
 
 # Open the video file
 # video_path = "Cashmere.MP4"
