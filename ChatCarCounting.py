@@ -57,7 +57,7 @@ def update_trackers(detections, trackers, next_object_id, distance_threshold=50)
     for box, label in detections:
         centroid = get_centroid(box)
         best_id = None
-        min_dist = float('inf')
+        min_dist = float("inf")
         for obj_id, (prev_centroid, counted) in trackers.items():
             dist = np.linalg.norm(np.array(centroid) - np.array(prev_centroid))
             if dist < distance_threshold and dist < min_dist:
@@ -83,8 +83,9 @@ while cap.isOpened():
     height, width, channels = frame.shape
 
     # Prepare input blob for YOLO and perform forward pass
-    blob = cv2.dnn.blobFromImage(frame, scalefactor=0.00392, size=(416, 416),
-                                 swapRB=True, crop=False)
+    blob = cv2.dnn.blobFromImage(
+        frame, scalefactor=0.00392, size=(416, 416), swapRB=True, crop=False
+    )
     net.setInput(blob)
     outs = net.forward(output_layers)
 
@@ -125,10 +126,22 @@ while cap.isOpened():
             # Process only vehicles and pedestrians
             if label in vehicle_classes or label == pedestrian_class:
                 color = (0, 255, 0) if label in vehicle_classes else (255, 0, 0)
-                cv2.rectangle(frame, (box[0], box[1]), (box[0] + box[2], box[1] + box[3]),
-                              color, 2)
-                cv2.putText(frame, label, (box[0], box[1] - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                cv2.rectangle(
+                    frame,
+                    (box[0], box[1]),
+                    (box[0] + box[2], box[1] + box[3]),
+                    color,
+                    2,
+                )
+                cv2.putText(
+                    frame,
+                    label,
+                    (box[0], box[1] - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    color,
+                    2,
+                )
                 # Draw the centroid for visualization
                 centroid = get_centroid(box)
                 cv2.circle(frame, centroid, 5, (0, 0, 255), -1)
@@ -138,7 +151,9 @@ while cap.isOpened():
                     vehicle_detections.append((box, label))
 
     # Update trackers with current vehicle detections
-    trackers, next_object_id = update_trackers(vehicle_detections, trackers, next_object_id)
+    trackers, next_object_id = update_trackers(
+        vehicle_detections, trackers, next_object_id
+    )
 
     # Check each tracked vehicle to see if it has crossed the counting line.
     # Here, we assume vehicles are moving downward (i.e. increasing y-coordinate).
@@ -151,8 +166,15 @@ while cap.isOpened():
     # Draw the counting line
     cv2.line(frame, (0, line_y), (frame_width, line_y), line_color, line_thickness)
     # Display the current count on the frame
-    cv2.putText(frame, f"Vehicles Passed: {line_count}", (10, 30),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    cv2.putText(
+        frame,
+        f"Vehicles Passed: {line_count}",
+        (10, 30),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1,
+        (0, 0, 255),
+        2,
+    )
 
     cv2.imshow("Intersection Detection", frame)
     key = cv2.waitKey(1)

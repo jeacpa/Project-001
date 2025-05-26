@@ -3,10 +3,10 @@ from ultralytics import YOLO
 import numpy as np
 
 # Load the YOLOv8 model
-model = YOLO('yolov8n.pt')
+model = YOLO("yolov8n.pt")
 
 # Open video file or camera stream
-cap = cv2.VideoCapture('Cashmere.MP4')  # Replace with your video path or 0 for webcam
+cap = cv2.VideoCapture("Cashmere.MP4")  # Replace with your video path or 0 for webcam
 
 # Initialize variables
 car_count = 0
@@ -47,7 +47,7 @@ while cap.isOpened():
     new_tracked_cars = {}
     for i, (curr_x, curr_y) in enumerate(current_detections):
         car_id = None
-        min_dist = float('inf')
+        min_dist = float("inf")
 
         # Match with previous detections
         for prev_id, prev_pos in tracked_cars.items():
@@ -62,8 +62,10 @@ while cap.isOpened():
 
         # Check if car crossed the line and hasn't been counted yet
         prev_pos = tracked_cars.get(car_id)
-        if (has_crossed_line(prev_pos, (curr_x, curr_y), line_position) and
-                car_id not in counted_cars):
+        if (
+            has_crossed_line(prev_pos, (curr_x, curr_y), line_position)
+            and car_id not in counted_cars
+        ):
             car_count += 1
             counted_cars.add(car_id)
 
@@ -79,17 +81,25 @@ while cap.isOpened():
     for car_id, (x, y) in tracked_cars.items():
         color = (0, 255, 0) if car_id in counted_cars else (0, 0, 255)
         cv2.circle(frame, (x, y), 5, color, -1)
-        cv2.putText(frame, f"ID: {car_id}", (x, y - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+        cv2.putText(
+            frame, f"ID: {car_id}", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2
+        )
 
     # Display counter
-    cv2.putText(frame, f"Cars counted: {car_count}", (10, 30),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+    cv2.putText(
+        frame,
+        f"Cars counted: {car_count}",
+        (10, 30),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1,
+        (255, 0, 0),
+        2,
+    )
 
     # Show the frame
-    cv2.imshow('Car Counter', frame)
+    cv2.imshow("Car Counter", frame)
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    if cv2.waitKey(1) & 0xFF == ord("q"):
         break
 
 # Cleanup

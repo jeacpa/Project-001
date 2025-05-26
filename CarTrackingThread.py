@@ -26,7 +26,9 @@ def run_tracker_in_thread(model_name, filename):
 # Create and start tracker threads using a for loop
 tracker_threads = []
 for video_file, model_name in zip(SOURCES, MODEL_NAMES):
-    thread = threading.Thread(target=run_tracker_in_thread, args=(model_name, video_file), daemon=True)
+    thread = threading.Thread(
+        target=run_tracker_in_thread, args=(model_name, video_file), daemon=True
+    )
     tracker_threads.append(thread)
     thread.start()
 
