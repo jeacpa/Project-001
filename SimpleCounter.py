@@ -13,11 +13,12 @@ class SimpleCounter:
     out_region: Dict[int, TrackingData]
     out_count: int
 
-    def __init__(self, region: List[Tuple[int,int]]):
+    def __init__(self, region: List[Tuple[int, int]]):
         self.polygon = Polygon(region)
         self.in_region = {}
         self.out_region = {}
         self.out_count = 0
+
     def process(self, tracking_data: List[TrackingData]):
         old_in_region = self.in_region
         self.in_region = {}
@@ -35,7 +36,7 @@ class SimpleCounter:
 
     def in_count(self) -> int:
         return len(self.in_region)
-    
+
     def passed_through_count(self) -> int:
         return self.out_count
 

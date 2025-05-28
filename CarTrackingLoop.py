@@ -1,3 +1,4 @@
+import asyncio
 import bisect
 from dataclasses import dataclass
 from enum import Enum
@@ -13,10 +14,10 @@ from ultralytics import solutions
 
 import logging
 
-from Clients.sql import SqlClient
+from Clients.sql import SqlClient, SqlTransaction
 import struct
 from SimpleCounter import SimpleCounter
-from structures import TrackingData
+from structures import TrackingData, TrackingEvent
 from util import utc_now
 
 logging.getLogger("ultralytics").setLevel(logging.ERROR)
@@ -31,6 +32,7 @@ class LightColor(Enum):
     YELLOW = 2
     GREEN = 3
 
+
 class IntersectionDirection(Enum):
     N = "N"
     S = "S"
@@ -40,6 +42,7 @@ class IntersectionDirection(Enum):
     NE = "NE"
     SW = "SW"
     SE = "SE"
+
 
 WINDOW_NAME = "YOLO11 Tracking"
 
@@ -92,9 +95,11 @@ LIGHT_PHASES_BY_FRAME = [
 ]
 LIGHT_PHASES_FRAMES = [frame_color[0] for frame_color in LIGHT_PHASES_BY_FRAME]
 
+
 # Hack: We want to draw ourselves, thank you very much
 def stub_function(*args, **kwargs):
     pass
+
 
 SolutionAnnotator.draw_region = stub_function
 SolutionAnnotator.box_label = stub_function
@@ -124,8 +129,6 @@ class Expiriment:
     light_change_time: float
     frame_offset: int
     mouse_pos: Tuple[int, int]
-    in_count: int
-    out_count: int
     saved_counted: set
     save_events: bool
     start_offset_ms: int
@@ -142,7 +145,7 @@ class Expiriment:
         show_light: bool = False,
         show_mouse: bool = False,
         save_events: bool = False,
-        start_offset_ms: int = 0
+        start_offset_ms: int = 0,
     ):
         self.video_path = video_path
         self.vboxsize = 1
@@ -165,26 +168,11 @@ class Expiriment:
     def _init_model(self):
 
         self.model = YOLO(MODEL_NAME)
-        self.model.overrides["verbose"] = False  # Hack: Verbose false on model does not seem to silence output
+        self.model.overrides["verbose"] = (
+            False  # Hack: Verbose false on model does not seem to silence output
+        )
 
         self.counter = SimpleCounter(COUNT_ZONE)
-
-        # # Use ultralytics counter to manage tracking along with zone detection
-        # self.counter = solutions.ObjectCounter(
-        #     show=False,  # Display the output
-        #     region=COUNT_ZONE,  # Pass region points
-        #     model=MODEL_NAME,  # model="yolo11n-obb.pt" for object counting using YOLO11 OBB model.
-        #     classes=TRACKING_CLASSES,  # If you want to count specific classes i.e person and car with COCO pretrained model.
-        #     show_in=False,  # Display in counts
-        #     show_out=False,  # Display out counts
-        #     line_width=2,  # Adjust the line width for bounding boxes and text display
-        # )
-
-        # # Hack: Verbose false on model does not seem to silence output
-        # #       Reaching into internal structure to get this done
-        # self.counter.model.overrides["verbose"] = False
-
-
 
     def _render_zones(self, frame):
         cv2.polylines(
@@ -305,27 +293,40 @@ class Expiriment:
             -1,
         )
 
-        if self.light_change_time and self.light_duration and (self.light_color == LightColor.RED or self.light_color == LightColor.GREEN):
+        if (
+            self.light_change_time
+            and self.light_duration
+            and (
+                self.light_color == LightColor.RED
+                or self.light_color == LightColor.GREEN
+            )
+        ):
 
             elapsed = round((self.time_offset - self.light_change_time) / 1000)
-            remaining = max(0, round(self.light_duration / 1000) - elapsed) 
+            remaining = max(0, round(self.light_duration / 1000) - elapsed)
             # remaining = max(0, round((self.light_duration - (self.time_offset - self.light_change_time))/1000))
 
             if self.light_color == LightColor.RED:
                 red_text = f"{elapsed}s"
                 green_text = f"{remaining}s"
-                red_color = (255,255,255)
-                green_color = (0,0,0)
+                red_color = (255, 255, 255)
+                green_color = (0, 0, 0)
             else:
                 green_text = f"{elapsed}s"
                 red_text = f"{remaining}s"
-                red_color = (0,0,0)
-                green_color = (255,255,255)
+                red_color = (0, 0, 0)
+                green_color = (255, 255, 255)
 
-            self._center_text(frame, red_text, (x + w // 2, y + h // 4), color=green_color, scale=0.6)
-            self._center_text(frame, green_text, (x + w // 2, y + 3 * h // 4), color=red_color, scale=0.6)
-
-
+            self._center_text(
+                frame, red_text, (x + w // 2, y + h // 4), color=green_color, scale=0.6
+            )
+            self._center_text(
+                frame,
+                green_text,
+                (x + w // 2, y + 3 * h // 4),
+                color=red_color,
+                scale=0.6,
+            )
 
     def _render_single_box(self, frame, td: TrackingData, color):
         x1, y1, x2, y2 = td.box
@@ -352,8 +353,8 @@ class Expiriment:
     def _render_boxes(self, frame):
 
         for td in self.counter.in_objects():
-            self._render_single_box(frame, td, (0,0,255))
-        
+            self._render_single_box(frame, td, (0, 0, 255))
+
     def _render_mouse(self, frame):
         if not hasattr(self, "mouse_pos"):
             return
@@ -392,64 +393,39 @@ class Expiriment:
             return LIGHT_PHASES_BY_FRAME[-1][1], 0
         else:
             # Otherwise using the previous
-            return LIGHT_PHASES_BY_FRAME[position - 1][1], ((LIGHT_PHASES_BY_FRAME[position][0] -LIGHT_PHASES_BY_FRAME[position-1][0]) / float(self.video_fps)) * 1000.0
+            return (
+                LIGHT_PHASES_BY_FRAME[position - 1][1],
+                (
+                    (
+                        LIGHT_PHASES_BY_FRAME[position][0]
+                        - LIGHT_PHASES_BY_FRAME[position - 1][0]
+                    )
+                    / float(self.video_fps)
+                )
+                * 1000.0,
+            )
 
     def _extract_tracking_data(self, frame):
-        results = self.model.track(frame, persist=True, classes = TRACKING_CLASSES)
+        results = self.model.track(frame, persist=True, classes=TRACKING_CLASSES)
 
         res = results[0]
 
         boxes = res.boxes.xyxy.cpu().numpy()  # Bounding boxes
         ids = res.boxes.id.cpu().numpy().astype(int)  # Track IDs
-        classes = (
-            res.boxes.cls.cpu().numpy().astype(int)
-        )  # Class indices
+        classes = res.boxes.cls.cpu().numpy().astype(int)  # Class indices
 
-        self.tracking_data = [TrackingData(
-                box=list(map(int, box)),
-                id=ids[idx],
-                class_id=classes[idx]) for idx, box in enumerate(boxes)]
-
-        # self.tracking_data = [
-        #     TrackingData(
-        #         box=map(int, box),
-        #         id=ids[idx],
-        #         class_id=classes[idx],
-        #         counted=False,
-        #     )
-        #     for idx, box in enumerate(boxes)
-        # ]
-
+        self.tracking_data = [
+            TrackingData(box=list(map(int, box)), id=ids[idx], class_id=classes[idx])
+            for idx, box in enumerate(boxes)
+        ]
 
     def _analyze_frame(self, frame):
-        # inout = self.counter.process(frame)
-        # counted_ids = set(self.counter.counted_ids)
-
-        # self.in_count = inout.in_count
-        # self.out_count = inout.out_count
-        # self.tracking_results = self.counter.tracks[0]
 
         self._extract_tracking_data(frame)
         self.counter.process(self.tracking_data)
 
         self.time_offset = self.cap.get(cv2.CAP_PROP_POS_MSEC)
         self.frame_offset = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
-
-        # boxes = self.tracking_results.boxes.xyxy.cpu().numpy()  # Bounding boxes
-        # ids = self.tracking_results.boxes.id.cpu().numpy().astype(int)  # Track IDs
-        # classes = (
-        #     self.tracking_results.boxes.cls.cpu().numpy().astype(int)
-        # )  # Class indices
-
-        # self.tracking_data = [
-        #     TrackingData(
-        #         box=map(int, box),
-        #         id=ids[idx],
-        #         class_id=classes[idx],
-        #         counted=ids[idx] in counted_ids,
-        #     )
-        #     for idx, box in enumerate(boxes)
-        # ]
 
         new_light_color, light_duration = self._get_light_phase()
 
@@ -511,6 +487,14 @@ class Expiriment:
     def _handle_mouse(self, event, x, y, flags, param):
         self.mouse_pos = (x, y)
 
+    def _write_batch_events(self, conn: SqlClient, events: List[TrackingEvent]):
+
+        conn.insert_batch(
+            "tbl_event",
+            ["created_at", "name", "attributes"],
+            [(utc_now(), te.name, te.attributes) for te in events],
+        )
+
     def _write_events(self, conn: SqlClient):
         return
         to_save: List[struct] = []
@@ -542,13 +526,6 @@ class Expiriment:
             self.video_fps,
             (int(self.video_width), int(self.video_height)),
         )
-
-    def process(self):
-        if self.save_events:
-            with SqlClient() as conn:
-                self._run_video_analysis(conn)
-        else:
-            self._run_video_analysis()
 
     def _run_video_analysis(self, conn: SqlClient = None):
 
@@ -587,7 +564,18 @@ class Expiriment:
 
         cv2.destroyAllWindows()
 
+    def process(self):
+
+        if self.save_events:
+            with SqlClient() as conn:
+                self._run_video_analysis(conn)
+        else:
+            self._run_video_analysis()
+
 
 # Start 27s in to skip initial cross traffic
-exp = Expiriment(video_path="Cashmere.MP4", start_offset_ms=27000, show_light=True, show_boxes=True)
+exp = Expiriment(
+    video_path="Cashmere.MP4", start_offset_ms=27000, show_light=True, show_boxes=True
+)
+
 exp.process()
