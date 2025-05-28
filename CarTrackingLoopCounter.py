@@ -1,9 +1,6 @@
 import cv2
-import torch
 
-from sympy.printing.pretty.pretty_symbology import annotated
 from ultralytics import YOLO
-from ultralytics import solutions
 
 
 frame_counter = 0
@@ -34,10 +31,10 @@ def main(video_path, line_position):
         if not ret:
             break
 
-        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        # frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         print(frame_height)
-        line_y = int(frame_height * 0.3)
+        # line_y = int(frame_height * 0.3)
         # Make detections
         results = model.predict(frame)
         detections = results.pandas().xyxy[0]  # xyxy format for bounding boxes

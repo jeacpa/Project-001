@@ -21,13 +21,13 @@ videoOut = cv.VideoWriter(vfname, codec, framerate, resolution)
 # ut = cv2.VideoWriter('output.avi',fourcc, 20.0, (640,480))
 
 #  LOAD MODEL
-## Coco Names
+# Coco Names
 classesFile = "coco.names"
 classNames = []
 with open(classesFile, "rt") as f:
     classNames = f.read().rstrip("\n").split("\n")
 print(classNames)
-## Model Files
+# Model Files
 modelConfiguration = "yolov3-320.cfg"
 modelWeights = "yolov3-320.weights"
 net = cv.dnn.readNetFromDarknet(modelConfiguration, modelWeights)

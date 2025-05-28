@@ -29,7 +29,7 @@ target_classes = ["car", "truck", "motorcycle", "bicycle", "bus"]
 
 
 def draw_points(event, x, y, flags, param):
-    global points, frame_copy, current_line_color, modifications_allowed, mouse_pos
+    global mouse_pos
     if event == cv2.EVENT_LBUTTONDOWN and modifications_allowed:
         points.append((x, y))
 
@@ -59,7 +59,6 @@ def point_line_distance(p1, p2, p):
 
 
 def delete_shape(x, y):
-    global shapes
     for i, (shape, color) in enumerate(shapes):
         if len(shape) > 2:
             for j in range(len(shape) - 1):
@@ -95,7 +94,7 @@ def draw_smooth_dotted_line(
 
 
 def process_video(video_url):
-    global frame_copy, points, shapes, current_line_color, modifications_allowed, mouse_pos
+    global frame_copy, points, current_line_color, modifications_allowed
     cap = cv2.VideoCapture(video_url)
 
     # Skip the first 1800 frames
@@ -107,8 +106,8 @@ def process_video(video_url):
     cv2.setMouseCallback("Video", draw_points)
 
     while cap.isOpened():
-        detections = np.empty((0, 5))
-        car_count = 0
+        # detections = np.empty((0, 5))
+        # car_count = 0
         green_shape_count = 0
         blue_shape_count = 0
         red_shape_count = 0
@@ -125,7 +124,7 @@ def process_video(video_url):
         results = model.track(video, persist=True)
 
         for result in results:
-            boxes = result.boxes
+            # boxes = result.boxes
             # Count vehicles based on shape colors
             for box in results[0].boxes:
                 x1, y1, x2, y2 = box.xyxy[0]
