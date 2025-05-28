@@ -135,6 +135,8 @@ class Expiriment:
     video_width: float
     video_height: float
     video_fps: int
+    half_frames: bool
+    use_frame: bool
 
     def __init__(
         self,
@@ -146,6 +148,7 @@ class Expiriment:
         show_mouse: bool = False,
         save_events: bool = False,
         start_offset_ms: int = 0,
+        half_frames: bool = False,
     ):
         self.video_path = video_path
         self.vboxsize = 1
@@ -162,7 +165,8 @@ class Expiriment:
         self.start_offset_ms = start_offset_ms
         self.light_change_time = 0
         self.light_duration = 0
-
+        self.half_frames = half_frames
+        self.use_frame = False
         self._init_model()
 
     def _init_model(self):
@@ -220,11 +224,12 @@ class Expiriment:
             )
             current_y += 30
 
-        cv2.rectangle(frame, (10, 480), (210, 630), TEXT_COLOR, cv2.FILLED)
+        cv2.rectangle(frame, (10, 480), (210, 650), TEXT_COLOR, cv2.FILLED)
         out("Show Stoplight (T)")
         out("Show Zone (L)")
         out("Show Mouse (M)")
         out("Show Boxes (B)")
+        out("Half frames (F)")
         out("Quit (Q)")
 
     def _center_text(self, frame, text, xy_center, color, thickness=1, scale=1.0):
@@ -480,6 +485,8 @@ class Expiriment:
             self.show_mouse = not self.show_mouse
         elif key == ord("q"):
             self.should_exit = True
+        elif key == ord("f"):
+            self.half_frames = not self.half_frames
 
         if cv2.getWindowProperty(WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1:
             self.should_exit = True
@@ -536,7 +543,15 @@ class Expiriment:
         writer = self._open_writer()
 
         while self.cap.isOpened() and not self.should_exit:
-            # Read a frame from the video
+
+            if self.half_frames:
+                self.use_frame = not self.use_frame
+                if not self.use_frame:
+                    # Skip this frame
+                    self.cap.grab()
+                    continue
+
+            # Read a frames from the video
             success, frame = self.cap.read()
 
             if not success:
