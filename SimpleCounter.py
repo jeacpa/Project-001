@@ -1,7 +1,5 @@
-from typing import Dict, List, Optional, Tuple
-import cv2
+from typing import Dict, List, Tuple
 from shapely import Polygon
-from ultralytics import YOLO
 
 from structures import TrackingData
 

@@ -19,8 +19,8 @@ class TrackingData:
             (int((self.box[0] + self.box[2]) / 2), int((self.box[1] + self.box[3]) / 2))
         )
 
+
 @dataclass
 class TrackingEvent:
     name: str
     attributes: Dict[str, Any]
-    

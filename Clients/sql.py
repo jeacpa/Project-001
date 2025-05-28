@@ -8,7 +8,7 @@ from util import convert_numpy
 
 
 # SqlClient will hold a database connection (in a context) for fast access
-# 
+#
 # Usage example:
 #
 # with SqlClient() as client:
@@ -35,7 +35,7 @@ class SqlClient:
         database="mydb",
         user="myuser",
         password="mysecretpassword",
-        port=5432
+        port=5432,
     ):
         self.conn_params = {
             "host": host,
@@ -45,7 +45,6 @@ class SqlClient:
             "port": port,
         }
         self.conn = None
-
 
     def __enter__(self):
         self.conn = psycopg2.connect(**self.conn_params)
@@ -71,18 +70,17 @@ class SqlClient:
 
 class SqlTransaction:
     client: SqlClient
-    
+
     def __init__(self, client: SqlClient):
         self.client = client
 
     def __enter__(self):
         self.client.cur.execute("BEGIN")
-  
+
         return self
-    
+
     def __exit__(self, exc_type, exc_value, exc_traceback):
         if exc_type is None:
             self.client.conn.commit()  # Commit if no exception
         else:
             self.client.conn.rollback()  # Rollback on error
-

@@ -190,7 +190,7 @@ def main(page: ft.Page):
 
     # Predefined task with embedded video URL
     predefined_task_name = "Traffic Feed"
-    predefined_video_url = "https://162-d2.divas.cloud/CHAN-9749/CHAN-9749_1.stream/playlist.m3u8?66.229.161.11&vdswztokenhash=Ef1Uwba8D796xl7VOHW2Bdp4Wv2Zo1uXplNxOMB-lbs="
+    predefined_video_url = "https://162-d2.divas.cloud/CHAN-9749/CHAN-9749_1.stream/playlist.m3u8?66.229.161.11&vdswztokenhash=Ef1Uwba8D796xl7VOHW2Bdp4Wv2Zo1uXplNxOMB-lbs="  # noqa: E501
     todo_app.add_clicked(predefined_task_name, predefined_video_url)
 
     def fab_pressed(e):

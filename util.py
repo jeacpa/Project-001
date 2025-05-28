@@ -2,8 +2,10 @@ from datetime import datetime, timezone
 from psycopg2.extras import Json
 import numpy as np
 
+
 def utc_now():
     return datetime.now(timezone.utc)
+
 
 # Converts numpy types to native Python types for JSON serialization
 def convert_numpy(obj):

@@ -1,21 +1,17 @@
-import asyncio
 import bisect
-from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import cv2
 
 import numpy as np
 from ultralytics import YOLO
 from ultralytics.engine.results import Results
 from ultralytics.solutions.solutions import SolutionAnnotator
-from ultralytics import solutions
 
 
 import logging
 
-from Clients.sql import SqlClient, SqlTransaction
-import struct
+from Clients.sql import SqlClient
 from SimpleCounter import SimpleCounter
 from structures import TrackingData, TrackingEvent
 from util import utc_now
@@ -106,7 +102,7 @@ SolutionAnnotator.box_label = stub_function
 SolutionAnnotator.display_analytics = stub_function
 
 
-class Expiriment:
+class Experiment:
     mode: YOLO
     # counter: solutions.ObjectCounter
     counter: SimpleCounter
@@ -122,6 +118,8 @@ class Expiriment:
     window_exists: bool
     light_color: LightColor
     light_duration: float
+    last_green_duration: float
+    last_red_duration: float
     tracking_results: Results
     vehicle_count: int
     tracking_data: Dict[int, TrackingData]
@@ -137,6 +135,7 @@ class Expiriment:
     video_fps: int
     half_frames: bool
     use_frame: bool
+    sql: Optional[SqlClient]
 
     def __init__(
         self,
@@ -167,6 +166,10 @@ class Expiriment:
         self.light_duration = 0
         self.half_frames = half_frames
         self.use_frame = False
+        self.sql = None
+        self.last_green_duration = 0.0
+        self.last_red_duration = 0.0
+
         self._init_model()
 
     def _init_model(self):
@@ -211,25 +214,27 @@ class Expiriment:
     def _render_help(self, frame):
         current_y = 500
 
-        def out(text):
+        def out(text, draw_ball: bool = False):
             nonlocal current_y
+            if draw_ball:
+                cv2.circle(frame, (20, current_y - 5), 5, (255, 255, 255), -1)
             cv2.putText(
                 frame,
                 text,
-                (20, current_y),
+                (30, current_y),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
+                0.7,
                 (0, 0, 0),
                 1,
             )
             current_y += 30
 
-        cv2.rectangle(frame, (10, 480), (210, 650), TEXT_COLOR, cv2.FILLED)
-        out("Show Stoplight (T)")
-        out("Show Zone (L)")
-        out("Show Mouse (M)")
-        out("Show Boxes (B)")
-        out("Half frames (F)")
+        cv2.rectangle(frame, (10, 470), (240, 660), TEXT_COLOR, cv2.FILLED)
+        out("Show Stoplight (T)", self.show_light)
+        out("Show Zone (L)", self.show_zones)
+        out("Show Mouse (M)", self.show_mouse)
+        out("Show Boxes (B)", self.show_boxes)
+        out("Half frames (F)", self.half_frames)
         out("Quit (Q)")
 
     def _center_text(self, frame, text, xy_center, color, thickness=1, scale=1.0):
@@ -392,10 +397,10 @@ class Expiriment:
         position = bisect.bisect_right(LIGHT_PHASES_FRAMES, self.frame_offset)
         if position == 0:
             # If before first just use first
-            return LIGHT_PHASES_BY_FRAME[0][1], 0
+            return LIGHT_PHASES_BY_FRAME[0][1], 0.0
         elif position >= len(LIGHT_PHASES_BY_FRAME):
             # if after last then just use last
-            return LIGHT_PHASES_BY_FRAME[-1][1], 0
+            return LIGHT_PHASES_BY_FRAME[-1][1], 0.0
         else:
             # Otherwise using the previous
             return (
@@ -424,6 +429,44 @@ class Expiriment:
             for idx, box in enumerate(boxes)
         ]
 
+    def _analyze_light_change(self):
+
+        new_light_color, light_duration = self._get_light_phase()
+
+        if new_light_color == self.light_color:
+            return
+
+        self.light_change_time = self.time_offset
+        if new_light_color == LightColor.GREEN:
+            count_at_light = self.counter.in_count()
+
+            self._write_event(
+                "red_to_green",
+                {"seconds": self.last_red_duration, "in_zone": count_at_light},
+            )
+            self.last_green_duration = light_duration
+
+        elif new_light_color == LightColor.RED:
+            passed_through_light = self.counter.passed_through_count()
+            count_at_light = self.counter.in_count()
+
+            self._write_event(
+                "green_to_red",
+                {
+                    "seconds": self.last_green_duration,
+                    "in_zone": count_at_light,
+                    "exited_zone": passed_through_light,
+                },
+            )
+
+            # Reset model to reset counting
+            self._init_model()
+
+            self.last_red_duration = light_duration
+
+        self.light_color = new_light_color
+        self.light_duration = light_duration
+
     def _analyze_frame(self, frame):
 
         self._extract_tracking_data(frame)
@@ -432,24 +475,7 @@ class Expiriment:
         self.time_offset = self.cap.get(cv2.CAP_PROP_POS_MSEC)
         self.frame_offset = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
 
-        new_light_color, light_duration = self._get_light_phase()
-
-        if new_light_color != self.light_color:
-            self.light_change_time = self.time_offset
-            if new_light_color == LightColor.GREEN:
-                count_at_light = self.counter.in_count()
-                print(f"Waiting for green: {count_at_light}")
-            elif new_light_color == LightColor.RED:
-                passed_through_light = self.counter.passed_through_count()
-                count_at_light = self.counter.in_count()
-                # Reset model to reset counting
-                self._init_model()
-                print(
-                    f"Passed through light: {passed_through_light}, Count at light: {count_at_light}"
-                )
-
-        self.light_color = new_light_color
-        self.light_duration = light_duration
+        self._analyze_light_change()
 
         # Let cv render boxes
         if self.show_boxes:
@@ -494,29 +520,36 @@ class Expiriment:
     def _handle_mouse(self, event, x, y, flags, param):
         self.mouse_pos = (x, y)
 
-    def _write_batch_events(self, conn: SqlClient, events: List[TrackingEvent]):
+    def _default_event_attributes(self):
+        return {
+            "intersection_id": INTERSECTION_ID,
+            "direction": INTERSECTION_DIRECTION.value,
+        }
 
-        conn.insert_batch(
+    def _write_batch_events(self, events: List[TrackingEvent]):
+
+        if not self.sql:
+            return
+
+        rows = []
+        for te in events:
+            attributes = self._default_event_attributes()
+            attributes.update(te.attributes)
+
+            rows.append((utc_now(), te.name, attributes))
+
+        self.sql.insert_batch(
             "tbl_event",
-            ["created_at", "name", "attributes"],
-            [(utc_now(), te.name, te.attributes) for te in events],
+            ["occurred_at", "name", "attributes"],
+            rows,
         )
 
-    def _write_events(self, conn: SqlClient):
-        return
-        to_save: List[struct] = []
-        for td in self.tracking_data:
-            if td.counted and td.id not in self.saved_counted:
-                to_save.append(td)
+        for row in rows:
+            print(f"[Event] {row[0]} - {row[1]}: {row[2]}")
 
-        conn.insert_batch(
-            "tbl_event",
-            ["created_at", "name", "attributes"],
-            [(utc_now(), "counted", {"id": td.id}) for td in to_save],
-        )
+    def _write_event(self, name: str, attributes: Dict[str, Any]):
 
-        for td in to_save:
-            self.saved_counted.add(td.id)
+        self._write_batch_events([TrackingEvent(name=name, attributes=attributes)])
 
     def _open_capture(self):
         self.cap = cv2.VideoCapture(self.video_path)
@@ -534,7 +567,7 @@ class Expiriment:
             (int(self.video_width), int(self.video_height)),
         )
 
-    def _run_video_analysis(self, conn: SqlClient = None):
+    def _run_video_analysis(self):
 
         print("Loading video...")
 
@@ -570,9 +603,6 @@ class Expiriment:
             writer.write(frame_out)
             self._check_input()
 
-            if conn:
-                self._write_events(conn)
-
         writer.release()
         self.cap.release()
 
@@ -581,15 +611,20 @@ class Expiriment:
     def process(self):
 
         if self.save_events:
-            with SqlClient() as conn:
-                self._run_video_analysis(conn)
+            with SqlClient() as sql:
+                self.sql = sql
+                self._run_video_analysis()
         else:
             self._run_video_analysis()
 
 
 # Start 27s in to skip initial cross traffic
-exp = Expiriment(
-    video_path="Cashmere.MP4", start_offset_ms=27000, show_light=True, show_boxes=True
+exp = Experiment(
+    video_path="Cashmere.MP4",
+    start_offset_ms=27000,
+    show_light=True,
+    show_boxes=True,
+    save_events=False,
 )
 
 exp.process()
