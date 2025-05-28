@@ -535,29 +535,28 @@ class Expiriment:
 
         writer = self._open_writer()
 
-        with SqlClient() as conn:
-            while self.cap.isOpened() and not self.should_exit:
-                # Read a frame from the video
-                success, frame = self.cap.read()
+        while self.cap.isOpened() and not self.should_exit:
+            # Read a frame from the video
+            success, frame = self.cap.read()
 
-                if not success:
-                    raise VideoReadException("Could not read from video")
+            if not success:
+                raise VideoReadException("Could not read from video")
 
-                frame_out = self._analyze_frame(frame)
+            frame_out = self._analyze_frame(frame)
 
-                if not self.window_exists:
-                    cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
-                    cv2.resizeWindow(WINDOW_NAME, 1920, 1080)
-                    cv2.setMouseCallback(WINDOW_NAME, self._handle_mouse)
+            if not self.window_exists:
+                cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
+                cv2.resizeWindow(WINDOW_NAME, 1920, 1080)
+                cv2.setMouseCallback(WINDOW_NAME, self._handle_mouse)
 
-                    self.window_exists = True
+                self.window_exists = True
 
-                cv2.imshow(WINDOW_NAME, frame_out)
-                writer.write(frame_out)
-                self._check_input()
+            cv2.imshow(WINDOW_NAME, frame_out)
+            writer.write(frame_out)
+            self._check_input()
 
-                if conn:
-                    self._write_events(conn)
+            if conn:
+                self._write_events(conn)
 
         writer.release()
         self.cap.release()
