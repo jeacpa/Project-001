@@ -8,3 +8,4 @@
 *:Zone.Identifier
 **/__pycache__/
 .vscode
+.idea
