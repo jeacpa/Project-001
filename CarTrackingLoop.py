@@ -49,7 +49,15 @@ OUTPUT_VIDEO = "vidout.mp4"
 INTERSECTION_ID = "001"
 INTERSECTION_DIRECTION = IntersectionDirection.E
 
+# Area of incoming traffic to count
 COUNT_ZONE = [(506, 360), (910, 316), (1521, 662), (778, 746)]
+
+# Number of cars or lower which will trigger a countdown until we request a turn of the light
+ZONE_CLEAR_CAR_COUNT = 5
+
+# Amount of time zone must contain ZONE_CLEAR_CAR_COUNT or less cars before we request a turn of the light
+ZONE_CLEAR_COUNTDOWN_SEC = 8
+
 
 LANE_COUNT_ZONES = {
     "1": [(506, 360), (656, 341), (1025, 721), (778, 744)],
@@ -136,6 +144,15 @@ class Experiment:
     half_frames: bool
     use_frame: bool
     sql: Optional[SqlClient]
+    paused: bool
+    last_raw_frame: Optional[np.ndarray]
+
+    # Zone clear time is used for auto light change and can have 3 states:
+    #
+    # 0 - Not counting down because too many cars are still in the zone (i.e. > ZONE_CLEAR_CAR_COUNT)
+    # > 0 - Counting down until we request a light change (car count must remain below ZONE_CLEAR_CAR_COUNT)
+    # -1 - An auto light change has been requested and we are waiting for the next red light
+    zone_clear_time: float
 
     def __init__(
         self,
@@ -169,6 +186,9 @@ class Experiment:
         self.sql = None
         self.last_green_duration = 0.0
         self.last_red_duration = 0.0
+        self.zone_clear_time = 0
+        self.paused = False
+        self.last_raw_frame = None
 
         self._init_model()
 
@@ -181,12 +201,37 @@ class Experiment:
 
         self.counter = SimpleCounter(COUNT_ZONE)
 
+    def _interpolate_color(
+        self, start_color, end_color, t: float
+    ) -> tuple[int, int, int]:
+        """Linearly interpolate between two BGR colors"""
+        return tuple(
+            [
+                int(start + (end - start) * t)
+                for start, end in zip(start_color, end_color)
+            ]
+        )
+
     def _render_zones(self, frame):
+
+        line_color = LINE_COLOR
+
+        if self.zone_clear_time > 0:
+            elapsed = (self.time_offset - self.zone_clear_time) / 1000
+            t = min(elapsed / ZONE_CLEAR_COUNTDOWN_SEC, 1.0)
+            line_color = self._interpolate_color(LINE_COLOR, (0, 0, 255), t)
+        elif self.zone_clear_time == -1:
+            # Flash every 500ms
+            if self.time_offset % 1000 < 500:
+                line_color = (0, 0, 255)
+            else:
+                return
+
         cv2.polylines(
             frame,
             [np.array(COUNT_ZONE, dtype=np.int32)],
             isClosed=True,
-            color=LINE_COLOR,
+            color=line_color,
             thickness=LINE_THICKNESS,
         )
 
@@ -229,12 +274,13 @@ class Experiment:
             )
             current_y += 30
 
-        cv2.rectangle(frame, (10, 470), (240, 660), TEXT_COLOR, cv2.FILLED)
+        cv2.rectangle(frame, (10, 470), (240, 690), TEXT_COLOR, cv2.FILLED)
         out("Show Stoplight (T)", self.show_light)
         out("Show Zone (L)", self.show_zones)
         out("Show Mouse (M)", self.show_mouse)
         out("Show Boxes (B)", self.show_boxes)
         out("Half frames (F)", self.half_frames)
+        out("Pause (SPC)", self.paused)
         out("Quit (Q)")
 
     def _center_text(self, frame, text, xy_center, color, thickness=1, scale=1.0):
@@ -461,11 +507,61 @@ class Experiment:
 
             # Reset model to reset counting
             self._init_model()
-
+            self.zone_clear_time = 0
             self.last_red_duration = light_duration
 
         self.light_color = new_light_color
         self.light_duration = light_duration
+
+    def _analyze_auto_light_change(self):
+        # We only currently check for turning green to red so a green light
+        # or we can skip if we've already requested a change
+        if self.light_color != LightColor.GREEN or self.zone_clear_time < 0:
+            return
+
+        # If car count above threshold then reset zone clear
+        if self.counter.in_count() >= ZONE_CLEAR_CAR_COUNT:
+            self.zone_clear_time = 0
+            return
+
+        # Set zone clear time so we start counting down
+        if self.zone_clear_time == 0:
+            # Start countdown
+            self.zone_clear_time = self.time_offset
+        else:
+            elapsed = (self.time_offset - self.zone_clear_time) / 1000
+            if elapsed > ZONE_CLEAR_COUNTDOWN_SEC:
+                self.zone_clear_time = -1
+                self._write_event(
+                    "auto_green_to_red",
+                    {},
+                )
+
+    def _render_frame(self, frame):
+        if self.show_zones:
+            self._render_zones(frame)
+        if self.show_light:
+            self._render_traffic_light(frame)
+        if self.show_text:
+            self._render_text(frame)
+        if self.show_boxes:
+            self._render_boxes(frame)
+        if self.show_mouse:
+            self._render_mouse(frame)
+
+        self._render_help(frame)
+
+        return frame
+
+    def _show_frame(self, frame):
+        if not self.window_exists:
+            cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
+            cv2.resizeWindow(WINDOW_NAME, 1920, 1150)  # Pad for top/bottom toolbars
+            cv2.setMouseCallback(WINDOW_NAME, self._handle_mouse)
+
+            self.window_exists = True
+
+        cv2.imshow(WINDOW_NAME, frame)
 
     def _analyze_frame(self, frame):
 
@@ -476,23 +572,7 @@ class Experiment:
         self.frame_offset = int(self.cap.get(cv2.CAP_PROP_POS_FRAMES))
 
         self._analyze_light_change()
-
-        # Let cv render boxes
-        if self.show_boxes:
-            self._render_boxes(frame)
-            # frame = results[0].plot(line_width=self.vboxsize, conf=True, boxes=boxes)
-        if self.show_zones:
-            self._render_zones(frame)
-        if self.show_light:
-            self._render_traffic_light(frame)
-        if self.show_text:
-            self._render_text(frame)
-        if self.show_mouse:
-            self._render_mouse(frame)
-
-        self._render_help(frame)
-
-        return frame
+        self._analyze_auto_light_change()
 
     def _check_input(self):
 
@@ -513,6 +593,10 @@ class Experiment:
             self.should_exit = True
         elif key == ord("f"):
             self.half_frames = not self.half_frames
+        elif key == ord(" "):
+            self.paused = not self.paused
+            if not self.paused:
+                self.last_raw_frame = None  # Reset last frame when unpaused
 
         if cv2.getWindowProperty(WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1:
             self.should_exit = True
@@ -577,6 +661,13 @@ class Experiment:
 
         while self.cap.isOpened() and not self.should_exit:
 
+            if self.paused and self.last_raw_frame is not None:
+
+                frame_out = self._render_frame(np.copy(self.last_raw_frame))
+                self._show_frame(frame_out)
+                self._check_input()
+                continue
+
             if self.half_frames:
                 self.use_frame = not self.use_frame
                 if not self.use_frame:
@@ -587,19 +678,19 @@ class Experiment:
             # Read a frames from the video
             success, frame = self.cap.read()
 
+            # Grab a copy of the last frame to use when paused
+            if self.paused and not self.last_raw_frame:
+                self.last_raw_frame = np.copy(frame)
+
             if not success:
                 raise VideoReadException("Could not read from video")
 
-            frame_out = self._analyze_frame(frame)
+            self._analyze_frame(frame)
 
-            if not self.window_exists:
-                cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
-                cv2.resizeWindow(WINDOW_NAME, 1920, 1080)
-                cv2.setMouseCallback(WINDOW_NAME, self._handle_mouse)
+            frame_out = self._render_frame(frame)
 
-                self.window_exists = True
+            self._show_frame(frame_out)
 
-            cv2.imshow(WINDOW_NAME, frame_out)
             writer.write(frame_out)
             self._check_input()
 
@@ -622,8 +713,10 @@ class Experiment:
 exp = Experiment(
     video_path="Cashmere.MP4",
     start_offset_ms=27000,
+    # start_offset_ms=70000,
     show_light=True,
     show_boxes=True,
+    show_zones=True,
     save_events=False,
 )
 
