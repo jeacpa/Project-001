@@ -593,6 +593,9 @@ class Experiment:
             self.should_exit = True
         elif key == ord("f"):
             self.half_frames = not self.half_frames
+        elif key == 81:
+            if self.frame_offset > 300:
+                self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frame_offset - 150)  # Set to frame -300 from current
         elif key == ord(" "):
             self.paused = not self.paused
             if not self.paused:

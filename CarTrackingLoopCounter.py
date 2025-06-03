@@ -19,6 +19,7 @@ def main(video_path, line_position):
 
     # Open the video
     cap = cv2.VideoCapture("Cashmere.MP4")
+    print("hello")
     if not cap.isOpened():
         print("Error: Could not open video.")
         return
@@ -28,6 +29,7 @@ def main(video_path, line_position):
 
     while True:
         ret, frame = cap.read()
+        print(frame)
         if not ret:
             break
 
