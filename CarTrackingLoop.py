@@ -58,6 +58,9 @@ ZONE_CLEAR_CAR_COUNT = 5
 # Amount of time zone must contain ZONE_CLEAR_CAR_COUNT or less cars before we request a turn of the light
 ZONE_CLEAR_COUNTDOWN_SEC = 8
 
+# Number of seconds to rewind the video based on 30 fps (150 = 5 seconds)
+REWIND_TIME = 150
+
 
 LANE_COUNT_ZONES = {
     "1": [(506, 360), (656, 341), (1025, 721), (778, 744)],
@@ -593,9 +596,9 @@ class Experiment:
             self.should_exit = True
         elif key == ord("f"):
             self.half_frames = not self.half_frames
-        elif key == 81:
-            if self.frame_offset > 300:
-                self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frame_offset - 150)  # Set to frame -300 from current
+        elif key == 81:  # left-arrow key
+            if self.frame_offset > REWIND_TIME:
+                self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frame_offset - REWIND_TIME)
         elif key == ord(" "):
             self.paused = not self.paused
             if not self.paused:
