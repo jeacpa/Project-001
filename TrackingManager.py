@@ -7,8 +7,14 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 from EventManager import EventManager
+from RingBuffer import RingBuffer
 from SimpleCounter import SimpleCounter, Tuple
-from constants import LIGHT_PHASES_BY_TIME_OFFSET, LIGHT_PHASES_TIMES, ZONE_CLEAR_CAR_COUNT, ZONE_CLEAR_COUNTDOWN_SEC
+from constants import (
+    LIGHT_PHASES_BY_TIME_OFFSET,
+    LIGHT_PHASES_TIMES,
+    ZONE_CLEAR_CAR_COUNT,
+    ZONE_CLEAR_COUNTDOWN_SEC,
+)
 from structures import LightColor, TrackingData, TrackingFrame, VideoReadException
 
 
@@ -28,7 +34,7 @@ class TrackingManager:
     _tracking_classes: List[int]
     _model: YOLO
     _yolo_model_name: str
-    _count_zone: List[Tuple[int,int]]
+    _count_zone: List[Tuple[int, int]]
     _event_manager: EventManager
     _start_time: float
     _light_color: LightColor
@@ -36,7 +42,7 @@ class TrackingManager:
     _last_green_duration: float
     _last_red_duration: float
     _light_change_time: float
-    
+    _frame_buffer: RingBuffer
 
     # Zone clear time is used for auto light change and can have 3 states:
     #
@@ -46,16 +52,18 @@ class TrackingManager:
     zone_clear_time: float
 
     def __init__(
-            self, 
-            cap: VideoCapture, 
-            yolo_model_name:str, 
-            tracking_classes: List[int], 
-            count_zone: List[Tuple[int,int]],
-            event_manager: EventManager,
-            output_path: Optional[str] = None, 
-            frame_skipping: bool = False, 
-            is_live: bool = False):
-        
+        self,
+        cap: VideoCapture,
+        yolo_model_name: str,
+        tracking_classes: List[int],
+        count_zone: List[Tuple[int, int]],
+        event_manager: EventManager,
+        buffer_file_name: Optional[str] = None,
+        output_path: Optional[str] = None,
+        frame_skipping: bool = False,
+        is_live: bool = False,
+    ):
+
         self._cap = cap
         self._tracking_classes = tracking_classes
         self._video_width = self._cap.get(cv2.CAP_PROP_FRAME_WIDTH)
@@ -81,18 +89,22 @@ class TrackingManager:
 
         if output_path:
             self._writer = cv2.VideoWriter(
-            output_path,
-            cv2.VideoWriter_fourcc(*"XVID"),
-            self._video_fps,
-            (int(self._video_width), int(self._video_height)),
-        )
+                output_path,
+                cv2.VideoWriter_fourcc(*"XVID"),
+                self._video_fps,
+                (int(self._video_width), int(self._video_height)),
+            )
+
+        if buffer_file_name:
+            self._frame_buffer = RingBuffer(buffer_file_name, 1000)
+        else:
+            self._frame_buffer = None
 
         self._reset_model()
 
     @property
     def current_frame(self) -> Optional[TrackingFrame]:
         return self._current_frame
-    
 
     def _reset_model(self):
 
@@ -105,7 +117,9 @@ class TrackingManager:
 
     def _extract_tracking_data(self, frame_image: np.ndarray) -> List[TrackingData]:
 
-        results = self._model.track(frame_image, persist=True, classes=self._tracking_classes)
+        results = self._model.track(
+            frame_image, persist=True, classes=self._tracking_classes
+        )
 
         res = results[0]
 
@@ -133,7 +147,7 @@ class TrackingManager:
             return (
                 LIGHT_PHASES_BY_TIME_OFFSET[position - 1][1],
                 LIGHT_PHASES_BY_TIME_OFFSET[position][0]
-                - LIGHT_PHASES_BY_TIME_OFFSET[position - 1][0]
+                - LIGHT_PHASES_BY_TIME_OFFSET[position - 1][0],
             )
 
     def _analyze_light_change(self, time_offset: float):
@@ -198,8 +212,9 @@ class TrackingManager:
                     {},
                 )
 
-
-    def _analyze_frame_image(self, frame_image: np.ndarray, time_offset: float) -> List[TrackingData]:
+    def _analyze_frame_image(
+        self, frame_image: np.ndarray, time_offset: float
+    ) -> List[TrackingData]:
 
         tracking_data = self._extract_tracking_data(frame_image)
         self._counter.process(tracking_data)
@@ -210,6 +225,9 @@ class TrackingManager:
         return tracking_data
 
     def _load_frame_from_stream(self):
+
+        if not self._cap.isOpened():
+            return
 
         # If we are frame skipping the burn a frame
         if self._frame_skipping:
@@ -222,20 +240,20 @@ class TrackingManager:
         success, frame_image = self._cap.read()
         if not success:
             raise VideoReadException("Could not read from video")
-        
+
         self._realtime_frame_index += 1
 
         # If we are live then use current time
         if self._is_live:
             time_offset = (time.time() - self._start_time) * 1000.0
-        else: 
+        else:
             time_offset = self._cap.get(cv2.CAP_PROP_POS_MSEC)
 
         tracking_data = self._analyze_frame_image(frame_image, time_offset)
 
         end = time.time()
 
-        self._current_frame = TrackingFrame(
+        frame = TrackingFrame(
             time_offset=time_offset,
             frame_index=self._realtime_frame_index,
             tracking_data=tracking_data,
@@ -246,33 +264,70 @@ class TrackingManager:
             light_color=self._light_color,
             light_duration=self._light_duration,
             light_change_time=self._light_change_time,
-            frame_processing_time_ms=round((end - start) * 1000.0)
+            frame_processing_time_ms=round((end - start) * 1000.0),
         )
 
+        if self._frame_buffer:
+            self._frame_buffer.store(self._realtime_frame_index, frame)
+
+        self._current_frame = frame
+
     def _load_frame_from_buffer(self):
-        pass
+        if self._frame_buffer and self._frame_buffer.item_exists(
+            self._current_frame_index
+        ):
+            self._current_frame = self._frame_buffer.retrieve(self._current_frame_index)
 
     def _load_current_frame(self):
-        if self._current_frame is not None or not self._cap.isOpened():
-            return
-        
+
+        start = time.time()
+
         # If we are ahead of realtime then grab from the feed
         if self._current_frame_index > self._realtime_frame_index:
             self._load_frame_from_stream()
-            return
+        else:
+            self._load_frame_from_buffer()
 
-    def advance_frame(self):
+        end = time.time()
+
+        # Artificially wait if needed to preserve video fps
+        wanted_frame_time = 1 / self._video_fps
+        actual_frame_time = end - start
+        if actual_frame_time < wanted_frame_time:
+            time.sleep(wanted_frame_time - actual_frame_time)
+
+    # Advances frame if not paused, loads frame data, and waits if needed to maintain fps
+    # Note that it may be confusing to call advance_frame(True) as the frame doesn't actually
+    # advance but we do this to make sure the paused frame is loaded and for any fps delay
+    def advance_frame(self, paused: bool):
         if self._current_frame_index == 0:
             self._start_time = time.time()
 
-        self._current_frame_index += 1
-        self._current_frame = None
+        if not paused:
+            self._current_frame_index += 1
+            self._current_frame = None
+
         self._load_current_frame()
 
-    def write_frame_to_video(self,  frame: TrackingFrame, frame_image: np.ndarray):
+    def go_back(self, sec: int):
+        if not self._frame_buffer:
+            return
+
+        new_frame_index = self._current_frame_index - round(sec * self._video_fps)
+        if new_frame_index > 0 and self._frame_buffer.item_exists(new_frame_index):
+            self._current_frame_index = new_frame_index
+
+    def go_forward(self, sec: int):
+        if not self._frame_buffer:
+            return
+
+        new_frame_index = self._current_frame_index + round(sec * self._video_fps)
+        self._current_frame_index = min(new_frame_index, self._realtime_frame_index + 1)
+
+    def write_frame_to_video(self, frame: TrackingFrame, frame_image: np.ndarray):
         if self._writer is None or frame.frame_index <= self._last_frame_written:
             return
-        
+
         self._writer.write(frame_image)
         self._last_frame_written = frame.frame_index
 

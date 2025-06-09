@@ -32,6 +32,7 @@ class TrackingData:
             (int((self.box[0] + self.box[2]) / 2), int((self.box[1] + self.box[3]) / 2))
         )
 
+
 @dataclass
 class TrackingFrame:
     frame_index: int
@@ -46,10 +47,12 @@ class TrackingFrame:
     light_duration: float
     frame_processing_time_ms: float
 
+
 @dataclass
 class TrackingEvent:
     name: str
     attributes: Dict[str, Any]
+
 
 class VideoReadException(Exception):
     pass
@@ -64,5 +67,3 @@ class IntersectionDirection(Enum):
     NE = "NE"
     SW = "SW"
     SE = "SE"
-
-

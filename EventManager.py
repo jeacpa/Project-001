@@ -23,6 +23,7 @@ class EventManager(ABC):
             "direction": INTERSECTION_DIRECTION.value,
         }
 
+
 class NullEventManager(EventManager):
     """
     An event manager that does nothing.
@@ -31,12 +32,14 @@ class NullEventManager(EventManager):
     def write_batch_events(self, events: List[TrackingEvent]) -> None:
         pass
 
+
 class SqlEventManager(EventManager):
     """
     An event manager that writes events to a SQL database.
     """
+
     _sql_client: SqlClient
-    
+
     def __init__(self, sql: SqlClient):
         self._sql_client = sql
 

@@ -17,6 +17,8 @@ MODEL_NAME = "yolo11n.pt"
 
 OUTPUT_VIDEO = "vidout.mp4"
 
+FRAME_BUFFER_FILE = "buffer.dat"
+
 INTERSECTION_ID = "001"
 INTERSECTION_DIRECTION = IntersectionDirection.E
 

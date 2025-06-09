@@ -1,8 +1,7 @@
-from typing import Dict, Optional, Tuple
+from typing import Optional, Tuple
 import cv2
 
 import numpy as np
-from ultralytics import YOLO
 from ultralytics.solutions.solutions import SolutionAnnotator
 
 
@@ -10,13 +9,35 @@ import logging
 
 from Clients.sql import SqlClient
 from EventManager import EventManager, NullEventManager, SqlEventManager
-from SimpleCounter import SimpleCounter
 from TrackingManager import TrackingManager
-from constants import BLACK_LIGHT, BOX_LINE_THICKNESS, BOX_TEXT_COLOR, BOX_TEXT_SCALE, BOX_TEXT_THICKNESS, COUNT_ZONE, GREEN_LIGHT, LINE_COLOR, LINE_THICKNESS, MODEL_NAME, MOUSE_COLOR, OUTPUT_VIDEO, RED_LIGHT, TEXT_COLOR, TEXT_LINE_HEIGHT, TEXT_SCALE, TEXT_THICKNESS, TRACKING_CLASSES, TRACKING_LABELS, WINDOW_NAME, YELLOW_LIGHT, ZONE_CLEAR_COUNTDOWN_SEC
+from constants import (
+    BLACK_LIGHT,
+    BOX_LINE_THICKNESS,
+    BOX_TEXT_COLOR,
+    BOX_TEXT_SCALE,
+    BOX_TEXT_THICKNESS,
+    COUNT_ZONE,
+    FRAME_BUFFER_FILE,
+    GREEN_LIGHT,
+    LINE_COLOR,
+    LINE_THICKNESS,
+    MODEL_NAME,
+    MOUSE_COLOR,
+    OUTPUT_VIDEO,
+    RED_LIGHT,
+    TEXT_COLOR,
+    TEXT_LINE_HEIGHT,
+    TEXT_SCALE,
+    TEXT_THICKNESS,
+    TRACKING_CLASSES,
+    TRACKING_LABELS,
+    WINDOW_NAME,
+    YELLOW_LIGHT,
+    ZONE_CLEAR_COUNTDOWN_SEC,
+)
 from structures import LightColor, TrackingData, TrackingFrame
 
 logging.getLogger("ultralytics").setLevel(logging.ERROR)
-
 
 
 # Hack: We want to draw ourselves, thank you very much
@@ -45,7 +66,6 @@ class Experiment:
     half_frames: bool
     sql: Optional[SqlClient]
     paused: bool
-
 
     def __init__(
         self,
@@ -128,7 +148,7 @@ class Experiment:
         out(f"Objects in: {frame.in_count}")
         out(f"Objects out: {frame.passed_through_count}")
         out(f"Think time: {frame.frame_processing_time_ms}ms")
-        
+
     def _render_help(self, frame_image: np.ndarray):
         current_y = 500
 
@@ -156,7 +176,9 @@ class Experiment:
         out("Pause (SPC)", self.paused)
         out("Quit (Q)")
 
-    def _center_text(self, frame_image: np.ndarray, text, xy_center, color, thickness=1, scale=1.0):
+    def _center_text(
+        self, frame_image: np.ndarray, text, xy_center, color, thickness=1, scale=1.0
+    ):
         (text_width, text_height), _ = cv2.getTextSize(
             text, cv2.FONT_HERSHEY_SIMPLEX, scale, thickness
         )
@@ -172,7 +194,9 @@ class Experiment:
             cv2.LINE_AA,
         )
 
-    def _inverse_text(self, frame_image: np.ndarray, text, xy, color, thickness=1, scale=1.0):
+    def _inverse_text(
+        self, frame_image: np.ndarray, text, xy, color, thickness=1, scale=1.0
+    ):
         (text_width, text_height), baseline = cv2.getTextSize(
             text, cv2.FONT_HERSHEY_SIMPLEX, scale, thickness
         )
@@ -246,7 +270,11 @@ class Experiment:
                 green_color = (255, 255, 255)
 
             self._center_text(
-                frame_image, red_text, (x + w // 2, y + h // 4), color=green_color, scale=0.6
+                frame_image,
+                red_text,
+                (x + w // 2, y + h // 4),
+                color=green_color,
+                scale=0.6,
             )
             self._center_text(
                 frame_image,
@@ -338,7 +366,7 @@ class Experiment:
 
         cv2.imshow(WINDOW_NAME, frame_image)
 
-    def _check_input(self):
+    def _check_input(self, tracking_manager: TrackingManager):
 
         key = cv2.waitKey(1)
         if key == ord("b"):
@@ -355,8 +383,10 @@ class Experiment:
             self.half_frames = not self.half_frames
         elif key == ord(" "):
             self.paused = not self.paused
-            if not self.paused:
-                self.last_raw_frame = None  # Reset last frame when unpaused
+        elif key == 81:
+            tracking_manager.go_back(1)
+        elif key == 83:
+            tracking_manager.go_forward(1)
 
         if cv2.getWindowProperty(WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1:
             self.should_exit = True
@@ -383,14 +413,14 @@ class Experiment:
             output_path=OUTPUT_VIDEO,  # No output video for now
             frame_skipping=self.half_frames,
             is_live=False,  # Not live, we are reading a video file
+            buffer_file_name=FRAME_BUFFER_FILE,
         )
 
         while True:
             frame: Optional[TrackingFrame]
 
-            if not self.paused:
-                tracking.advance_frame()
-            
+            tracking.advance_frame(self.paused)
+
             frame = tracking.current_frame
 
             if frame is None or self.should_exit:
@@ -402,7 +432,7 @@ class Experiment:
 
                 self._render_frame(frame, frame_out)
                 self._show_frame(frame_out)
-                self._check_input()
+                self._check_input(tracking)
                 continue
 
             self._render_frame(frame, frame_out)
@@ -411,7 +441,7 @@ class Experiment:
 
             tracking.write_frame_to_video(frame, frame_out)
 
-            self._check_input()
+            self._check_input(tracking)
 
         tracking.close()
         self.cap.release()
