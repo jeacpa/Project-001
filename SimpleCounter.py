@@ -25,6 +25,7 @@ class SimpleCounter:
         for td in tracking_data:
             if self.polygon.contains(td.centroid):
                 self.in_region[td.id] = td
+                td.in_zone = True
             else:
                 # If not in region then see if it was previously
                 # and if it was move it from in to out region
