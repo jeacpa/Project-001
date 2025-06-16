@@ -167,13 +167,15 @@ class Experiment:
             )
             current_y += 30
 
-        cv2.rectangle(frame_image, (10, 470), (240, 690), TEXT_COLOR, cv2.FILLED)
+        cv2.rectangle(frame_image, (10, 470), (280, 750), TEXT_COLOR, cv2.FILLED)
         out("Show Stoplight (T)", self.show_light)
         out("Show Zone (L)", self.show_zones)
         out("Show Mouse (M)", self.show_mouse)
         out("Show Boxes (B)", self.show_boxes)
         out("Half frames (F)", self.half_frames)
         out("Pause (SPC)", self.paused)
+        out("Back in time (<-)", self.paused)
+        out("Forward in time (->)", self.paused)
         out("Quit (Q)")
 
     def _center_text(
