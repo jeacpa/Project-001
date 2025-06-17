@@ -1,34 +1,29 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import logo from './logo.svg';
 import './App.css';
 import { Button, Container, Typography } from '@mui/material';
 
 function App() {
+  const [data, setData] = useState<{ message: string } | null>(null);
+
+  useEffect(() => {
+    fetch('http://localhost:8000/api/data')
+      .then((res) => res.json())
+      .then((json) => setData(json))
+      .catch((err) => console.error('Error fetching data:', err));
+  }, []);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload!
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-      <Container maxWidth="sm" style={{ marginTop: '2rem' }}>
-        <Typography variant="h4" gutterBottom>
-          Hello Material UI with TypeScript!
-        </Typography>
-        <Button variant="contained" color="primary">
-          Click Me
-        </Button>
-      </Container>
-    </div>
+
+    <Container maxWidth="sm" style={{ marginTop: '2rem' }}>
+      <Typography variant="h4" gutterBottom>
+        Hello Material UI with TypeScript!
+      </Typography>
+      <p>{data ? data.message : 'Loading...'}</p>
+      <Button variant="contained" color="primary">
+        Click Me
+      </Button>
+    </Container>
   );
 }
 
