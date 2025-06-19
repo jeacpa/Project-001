@@ -6,16 +6,21 @@ from cv2 import VideoCapture
 import cv2
 import numpy as np
 from ultralytics import YOLO
-from EventManager import EventManager
-from RingBuffer import RingBuffer
-from SimpleCounter import SimpleCounter, Tuple
+from tracking_core.EventManager import EventManager
+from tracking_core.RingBuffer import RingBuffer
+from tracking_core.SimpleCounter import SimpleCounter, Tuple
 from constants import (
     LIGHT_PHASES_BY_TIME_OFFSET,
     LIGHT_PHASES_TIMES,
     ZONE_CLEAR_CAR_COUNT,
     ZONE_CLEAR_COUNTDOWN_SEC,
 )
-from structures import LightColor, TrackingData, TrackingFrame, VideoReadException
+from tracking_core.structures import (
+    LightColor,
+    TrackingData,
+    TrackingFrame,
+    VideoReadException,
+)
 
 
 class TrackingManager:
@@ -94,6 +99,8 @@ class TrackingManager:
                 self._video_fps,
                 (int(self._video_width), int(self._video_height)),
             )
+        else:
+            self._writer = None
 
         if buffer_file_name:
             self._frame_buffer = RingBuffer(buffer_file_name, 1000)
@@ -124,7 +131,12 @@ class TrackingManager:
         res = results[0]
 
         boxes = res.boxes.xyxy.cpu().numpy()  # Bounding boxes
-        ids = res.boxes.id.cpu().numpy().astype(int)  # Track IDs
+        id = res.boxes.id
+        if id is not None:
+            ids = id.cpu().numpy().astype(int)  # Track IDs
+        else:
+            ids = [-1] * len(boxes)
+
         classes = res.boxes.cls.cpu().numpy().astype(int)  # Class indices
 
         return [

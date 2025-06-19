@@ -1,4 +1,4 @@
-from structures import IntersectionDirection, LightColor
+from tracking_core.structures import IntersectionDirection, LightColor
 
 
 LIGHT_PHASES_BY_TIME_OFFSET = [
