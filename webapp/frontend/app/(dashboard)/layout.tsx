@@ -3,7 +3,7 @@ import { DashboardLayout } from '@toolpad/core/DashboardLayout';
 
 export default function Layout(props: { children: React.ReactNode }) {
   return (
-    <DashboardLayout>
+    <DashboardLayout defaultSidebarCollapsed>
       {props.children}
     </DashboardLayout>
   );

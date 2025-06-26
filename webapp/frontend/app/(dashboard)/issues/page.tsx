@@ -8,5 +8,5 @@ export default function SearchPage() {
         Issues here
       </Typography>
     </PageContainer>
-  );;
+  );
 }

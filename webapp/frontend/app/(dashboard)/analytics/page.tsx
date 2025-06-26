@@ -8,5 +8,5 @@ export default function SearchPage() {
         Analytics here
       </Typography>
     </PageContainer>
-  );;
+  );
 }

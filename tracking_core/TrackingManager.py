@@ -19,7 +19,6 @@ from tracking_core.structures import (
     LightColor,
     TrackingData,
     TrackingFrame,
-    VideoReadException,
 )
 
 
@@ -48,6 +47,7 @@ class TrackingManager:
     _last_red_duration: float
     _light_change_time: float
     _frame_buffer: RingBuffer
+    _no_delay: bool
 
     # Zone clear time is used for auto light change and can have 3 states:
     #
@@ -67,6 +67,7 @@ class TrackingManager:
         output_path: Optional[str] = None,
         frame_skipping: bool = False,
         is_live: bool = False,
+        no_delay=False,
     ):
 
         self._cap = cap
@@ -91,6 +92,7 @@ class TrackingManager:
         self._light_color = LightColor.RED
         self._light_duration = 0.0
         self._light_change_time = 0.0
+        self._no_delay = no_delay
 
         if output_path:
             self._writer = cv2.VideoWriter(
@@ -243,15 +245,17 @@ class TrackingManager:
 
         # If we are frame skipping the burn a frame
         if self._frame_skipping:
-            self.use_frame = not self.use_frame
-            if not self.use_frame:
+            self._use_frame = not self._use_frame
+            if not self._use_frame:
                 self._cap.grab()
 
         start = time.time()
 
         success, frame_image = self._cap.read()
         if not success:
-            raise VideoReadException("Could not read from video")
+            self._current_frame = None
+            return
+            # raise VideoReadException("Could not read from video")
 
         self._realtime_frame_index += 1
 
@@ -303,10 +307,12 @@ class TrackingManager:
         end = time.time()
 
         # Artificially wait if needed to preserve video fps
-        wanted_frame_time = 1 / self._video_fps
-        actual_frame_time = end - start
-        if actual_frame_time < wanted_frame_time:
-            time.sleep(wanted_frame_time - actual_frame_time)
+        if not self._no_delay and not self._frame_skipping:
+            wanted_frame_time = 1 / self._video_fps
+            actual_frame_time = end - start
+
+            if actual_frame_time < wanted_frame_time:
+                time.sleep(wanted_frame_time - actual_frame_time)
 
     # Advances frame if not paused, loads frame data, and waits if needed to maintain fps
     # Note that it may be confusing to call advance_frame(True) as the frame doesn't actually
@@ -342,6 +348,9 @@ class TrackingManager:
 
         self._writer.write(frame_image)
         self._last_frame_written = frame.frame_index
+
+    def set_frame_skipping(self, frame_skipping: bool):
+        self._frame_skipping = frame_skipping
 
     def close(self):
         if self._writer:

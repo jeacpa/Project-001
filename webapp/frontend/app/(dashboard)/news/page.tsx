@@ -8,5 +8,5 @@ export default function SearchPage() {
         News here
       </Typography>
     </PageContainer>
-  );;
+  );
 }

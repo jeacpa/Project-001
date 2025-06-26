@@ -1,4 +1,4 @@
-import NextAuth, { AuthError } from 'next-auth';
+import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
 import Github from 'next-auth/providers/github';
 import Credentials from 'next-auth/providers/credentials';
@@ -88,7 +88,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       return false; // Redirect unauthenticated users to login page
     },
-    async signIn({ user }) {
+    // eslint-disable-next-line unused-imports/no-unused-vars
+    async signIn() {
       // Return false if not in whitelist (will go to custom error page)
       return true;
     },

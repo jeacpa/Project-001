@@ -1,29 +1,35 @@
 "use client";
 
 import * as React from 'react';
-import Typography from '@mui/material/Typography';
 import { PageContainer } from '@toolpad/core/PageContainer';
-import { auth } from '../../auth';
-import { useEffect } from 'react';
+import { Paper } from '@mui/material';
+import VideoToolbar from '../components/VideoToolbar';
+import Image from 'next/image';
 
-export default  function HomePage() {
-  // const session = await auth();
+export default function HomePage() {
 
-  useEffect(() => {
-    fetch("http://localhost:8000/")
-     .then((response) => {
-        if (!response.ok) throw new Error("Failed to fetch");
-        return response.json();
-      })
-      .then((json) => console.log(json))
-      .catch((error) => console.error("Error fetching data:", error));
-  }, []);
-  return (    
+  return (
     <PageContainer breadcrumbs={[]}>
-      <Typography>
-        Live video here
-      </Typography>
-      <img src="http://localhost:8000/video" width="1920" height="1080"/>
+      <Paper
+        elevation={1}
+        sx={{ p: '10px' }}
+      >
+
+        <VideoToolbar />
+        <Image
+          src={process.env.NEXT_PUBLIC_VIDEO_URL ?? ''}
+          alt="Video Stream"
+          width={1920}
+          height={1080}
+          style={{ width: '100%', height: 'auto', display: 'block' }}
+          unoptimized
+        />
+        {/* <img src={process.env.NEXT_PUBLIC_VIDEO_URL}
+          alt='Video Stream'
+          // width="1920" 
+          // height="1080" 
+          style={{ width: '100%', height: 'auto', display: 'block' }} /> */}
+      </Paper >
     </PageContainer>
   );
 }

@@ -1,14 +1,11 @@
 import * as React from 'react';
 import { NextAppProvider } from '@toolpad/core/nextjs';
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import PersonIcon from '@mui/icons-material/Person';
 
 import type { Navigation } from '@toolpad/core/AppProvider';
 import { SessionProvider, signIn, signOut } from 'next-auth/react';
 import { auth } from '../auth';
 import theme from '../theme';
-import SvgIcon from '@mui/icons-material/Dashboard';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import SearchIcon from '@mui/icons-material/Search';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
@@ -54,9 +51,11 @@ const NAVIGATION: Navigation = [
   },
 ];
 
+import Image from 'next/image';
+
 const BRANDING = {
   title: '',
-  logo: <img src="/logo_dark.png" />
+  logo: <Image src="/logo_dark.png" alt="Logo" width={40} height={40} />,
 };
 
 

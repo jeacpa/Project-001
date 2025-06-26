@@ -8,7 +8,12 @@ from ultralytics.solutions.solutions import SolutionAnnotator
 import logging
 
 from Clients.sql import SqlClient
-from tracking_core.annotation_util import render_boxes, render_text, render_traffic_light, render_zones
+from tracking_core.annotation_util import (
+    render_boxes,
+    render_text,
+    render_traffic_light,
+    render_zones,
+)
 from tracking_core.draw_util import inverse_text
 from tracking_core.EventManager import EventManager, NullEventManager, SqlEventManager
 from tracking_core.TrackingManager import TrackingManager
@@ -175,6 +180,7 @@ class Experiment:
             self.should_exit = True
         elif key == ord("f"):
             self.half_frames = not self.half_frames
+            tracking_manager.set_frame_skipping(self.half_frames)
         elif key == ord(" "):
             self.paused = not self.paused
         elif key == 81:

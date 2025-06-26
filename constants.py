@@ -7,6 +7,9 @@ LIGHT_PHASES_BY_TIME_OFFSET = [
     (106000, LightColor.YELLOW),
     (110000, LightColor.RED),
     (206000, LightColor.GREEN),
+    (276000, LightColor.YELLOW),
+    (280000, LightColor.RED),
+    (375000, LightColor.GREEN),
 ]
 LIGHT_PHASES_TIMES = [time_color[0] for time_color in LIGHT_PHASES_BY_TIME_OFFSET]
 
