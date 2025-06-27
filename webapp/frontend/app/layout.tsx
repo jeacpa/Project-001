@@ -55,7 +55,7 @@ import Image from 'next/image';
 
 const BRANDING = {
   title: '',
-  logo: <Image src="/logo_dark.png" alt="Logo" width={40} height={40} />,
+  logo: <Image src="/logo_dark.png" alt="Logo" width={295} height={58} />,
 };
 
 
