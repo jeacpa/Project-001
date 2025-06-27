@@ -1,5 +1,6 @@
 "use client";
 
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
 export default function AuthErrorPage() {
@@ -14,7 +15,10 @@ export default function AuthErrorPage() {
       ) : (
         <p>An unknown error occurred: {error}</p>
       )}
-      <a href="/api/auth/signin">Try signing in again</a>
+      <Link href="/api/auth/signin">
+        Try signing in again
+      </Link>
+      {/* <a href="/api/auth/signin">Try signing in again</a> */}
     </div>
   );
 }

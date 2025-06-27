@@ -15,10 +15,10 @@ buffer.dat
 /webapp/frontend/node_modules
 /webapp/frontend/build
 
-/webapp/frontend/.env.local
-/webapp/frontend/.env.development.local
-/webapp/frontend/.env.test.local
-/webapp/frontend/.env.production.local
+# /webapp/frontend/.env.local
+# /webapp/frontend/.env.development.local
+# /webapp/frontend/.env.test.local
+# /webapp/frontend/.env.production.local
 
 /webapp/frontend/npm-debug.log*
 /webapp/frontend/yarn-debug.log*
