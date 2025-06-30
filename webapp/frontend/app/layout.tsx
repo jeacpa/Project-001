@@ -14,7 +14,7 @@ import ErrorIcon from '@mui/icons-material/Error';
 import SettingsIcon from '@mui/icons-material/Settings';
 
 export const metadata = {
-  title: 'My Toolpad Core Next.js App',
+  title: 'AI Controlled Traffic Signals',
   description: 'This is a sample app built with Toolpad Core and Next.js',
 };
 
@@ -54,8 +54,8 @@ const NAVIGATION: Navigation = [
 import Image from 'next/image';
 
 const BRANDING = {
-  title: '',
-  logo: <Image src="/logo_dark.png" alt="Logo" width={295} height={58} />,
+  title: 'AI Controlled Traffic Signals',
+  logo: <Image src="/logo_dark.png" alt="Logo" width={230} height={58} />,
 };
 
 
