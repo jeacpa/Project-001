@@ -6,16 +6,20 @@ from cv2 import VideoCapture
 import cv2
 import numpy as np
 from ultralytics import YOLO
-from EventManager import EventManager
-from RingBuffer import RingBuffer
-from SimpleCounter import SimpleCounter, Tuple
+from tracking_core.EventManager import EventManager
+from tracking_core.RingBuffer import RingBuffer
+from tracking_core.SimpleCounter import SimpleCounter, Tuple
 from constants import (
     LIGHT_PHASES_BY_TIME_OFFSET,
     LIGHT_PHASES_TIMES,
     ZONE_CLEAR_CAR_COUNT,
     ZONE_CLEAR_COUNTDOWN_SEC,
 )
-from structures import LightColor, TrackingData, TrackingFrame, VideoReadException
+from tracking_core.structures import (
+    LightColor,
+    TrackingData,
+    TrackingFrame,
+)
 
 
 class TrackingManager:
@@ -43,6 +47,7 @@ class TrackingManager:
     _last_red_duration: float
     _light_change_time: float
     _frame_buffer: RingBuffer
+    _no_delay: bool
 
     # Zone clear time is used for auto light change and can have 3 states:
     #
@@ -62,6 +67,7 @@ class TrackingManager:
         output_path: Optional[str] = None,
         frame_skipping: bool = False,
         is_live: bool = False,
+        no_delay=False,
     ):
 
         self._cap = cap
@@ -86,6 +92,7 @@ class TrackingManager:
         self._light_color = LightColor.RED
         self._light_duration = 0.0
         self._light_change_time = 0.0
+        self._no_delay = no_delay
 
         if output_path:
             self._writer = cv2.VideoWriter(
@@ -94,6 +101,8 @@ class TrackingManager:
                 self._video_fps,
                 (int(self._video_width), int(self._video_height)),
             )
+        else:
+            self._writer = None
 
         if buffer_file_name:
             self._frame_buffer = RingBuffer(buffer_file_name, 1000)
@@ -124,7 +133,12 @@ class TrackingManager:
         res = results[0]
 
         boxes = res.boxes.xyxy.cpu().numpy()  # Bounding boxes
-        ids = res.boxes.id.cpu().numpy().astype(int)  # Track IDs
+        id = res.boxes.id
+        if id is not None:
+            ids = id.cpu().numpy().astype(int)  # Track IDs
+        else:
+            ids = [-1] * len(boxes)
+
         classes = res.boxes.cls.cpu().numpy().astype(int)  # Class indices
 
         return [
@@ -231,15 +245,17 @@ class TrackingManager:
 
         # If we are frame skipping the burn a frame
         if self._frame_skipping:
-            self.use_frame = not self.use_frame
-            if not self.use_frame:
+            self._use_frame = not self._use_frame
+            if not self._use_frame:
                 self._cap.grab()
 
         start = time.time()
 
         success, frame_image = self._cap.read()
         if not success:
-            raise VideoReadException("Could not read from video")
+            self._current_frame = None
+            return
+            # raise VideoReadException("Could not read from video")
 
         self._realtime_frame_index += 1
 
@@ -291,10 +307,12 @@ class TrackingManager:
         end = time.time()
 
         # Artificially wait if needed to preserve video fps
-        wanted_frame_time = 1 / self._video_fps
-        actual_frame_time = end - start
-        if actual_frame_time < wanted_frame_time:
-            time.sleep(wanted_frame_time - actual_frame_time)
+        if not self._no_delay and not self._frame_skipping:
+            wanted_frame_time = 1 / self._video_fps
+            actual_frame_time = end - start
+
+            if actual_frame_time < wanted_frame_time:
+                time.sleep(wanted_frame_time - actual_frame_time)
 
     # Advances frame if not paused, loads frame data, and waits if needed to maintain fps
     # Note that it may be confusing to call advance_frame(True) as the frame doesn't actually
@@ -330,6 +348,9 @@ class TrackingManager:
 
         self._writer.write(frame_image)
         self._last_frame_written = frame.frame_index
+
+    def set_frame_skipping(self, frame_skipping: bool):
+        self._frame_skipping = frame_skipping
 
     def close(self):
         if self._writer:

@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+
+opencv-python
+flet
+ultralytics
+cvzone
+flet[all]
+psycopg2-binary
+shapely

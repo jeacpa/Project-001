@@ -1,7 +1,7 @@
 from typing import Dict, List, Tuple
 from shapely import Polygon
 
-from structures import TrackingData
+from tracking_core.structures import TrackingData
 
 
 class SimpleCounter:

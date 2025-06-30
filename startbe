@@ -1,0 +1,1 @@
+PYTHONPATH=. uvicorn webapp.backend.main:app --reload

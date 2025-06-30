@@ -2,9 +2,9 @@ from abc import ABC, abstractmethod
 from typing import Any, List
 
 from Clients.sql import SqlClient
-from SimpleCounter import Dict
+from tracking_core.SimpleCounter import Dict
 from constants import INTERSECTION_DIRECTION, INTERSECTION_ID
-from structures import TrackingEvent
+from tracking_core.structures import TrackingEvent
 from util import utc_now
 
 
