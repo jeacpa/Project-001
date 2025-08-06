@@ -12,6 +12,7 @@ import PlayIcon from '@mui/icons-material/PlayArrow';
 import FastForwardIcon from "@mui/icons-material/FastForward";
 import FastRewindIcon from "@mui/icons-material/FastRewind";
 import RestartIcon from "@mui/icons-material/RestartAlt";
+import InfoJumpIcon from "@mui/icons-material/ErrorOutline";
 import SimpleToggleButton from "../simpleWrappers/ToggleButton";
 
 interface VideoToolbarProps {
@@ -133,6 +134,15 @@ export default function VideoToolbar({ onRestart }: VideoToolbarProps) {
                 size="small"
                 aria-label="text alignment"
             >
+                <SimpleToggleButton
+                    onChange={() => { 
+                        sendAction("infojump");
+                        onRestart?.();
+                    }}
+
+                    icon={<InfoJumpIcon />}
+                    tooltip={"Jump to traffic suggestion scenario"}
+                />
                 <SimpleToggleButton
                     onChange={() => { 
                         sendAction("restart");

@@ -29,6 +29,7 @@ class TrackingManager:
     _video_height: float
     _video_fps: int
     _last_frame_written: int
+    _starting_frame_index: int
     _current_frame_index: int
     _realtime_frame_index: int
     _current_frame: Optional[TrackingFrame]
@@ -72,14 +73,16 @@ class TrackingManager:
 
         self._cap = cap
         self._tracking_classes = tracking_classes
+
+        self._starting_frame_index = self._cap.get(cv2.CAP_PROP_POS_FRAMES)
         self._video_width = self._cap.get(cv2.CAP_PROP_FRAME_WIDTH)
         self._video_height = self._cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
         self._video_fps = self._cap.get(cv2.CAP_PROP_FPS)
         self._last_frame_written = 0
-        self._current_frame_index = 0
-        self._realtime_frame_index = 0
+        self._current_frame_index = self._starting_frame_index
+        self._realtime_frame_index = self._starting_frame_index
         self._current_frame = None
-        self._frame_skipping = frame_skipping
+        self._frame_skipping = False # TODO: allow this but for now it messes with rewind
         self._use_frame = False
         self._is_live = is_live
         self._yolo_model_name = yolo_model_name
@@ -318,7 +321,7 @@ class TrackingManager:
     # Note that it may be confusing to call advance_frame(True) as the frame doesn't actually
     # advance but we do this to make sure the paused frame is loaded and for any fps delay
     def advance_frame(self, paused: bool):
-        if self._current_frame_index == 0:
+        if self._current_frame_index == self._starting_frame_index:
             self._start_time = time.time()
 
         if not paused:
