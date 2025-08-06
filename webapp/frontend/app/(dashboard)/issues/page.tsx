@@ -1,7 +1,6 @@
 import { Typography } from "@mui/material";
 import { PageContainer } from "@toolpad/core";
-import IssuesList from './IssuesList';
-
+import IssuesList from "../IssuesList";
 
 export default function SearchPage() {
   return (    
@@ -11,6 +10,7 @@ export default function SearchPage() {
         the issue from https://github.com/jeacpa/Project-001/issues.  I will presume we will use React to perform
         this.
       </Typography>
+      <IssuesList />
     </PageContainer>
   );
 }
