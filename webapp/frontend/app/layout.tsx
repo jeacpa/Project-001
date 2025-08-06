@@ -12,6 +12,7 @@ import AnalyticsIcon from '@mui/icons-material/Analytics';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import ErrorIcon from '@mui/icons-material/Error';
 import SettingsIcon from '@mui/icons-material/Settings';
+import InfoIcon from '@mui/icons-material/Info';
 
 export const metadata = {
   title: 'AI Controlled Traffic Signals',
@@ -49,6 +50,11 @@ const NAVIGATION: Navigation = [
     title: 'Options',
     icon: <SettingsIcon />,
   },
+  {
+    segment: 'about',
+    title: 'About',
+    icon: <InfoIcon />,
+  }
 ];
 
 import Image from 'next/image';
