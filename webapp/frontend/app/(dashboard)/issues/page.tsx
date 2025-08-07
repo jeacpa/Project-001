@@ -6,9 +6,21 @@ export default function SearchPage() {
   return (    
     <PageContainer breadcrumbs={[]}>
       <Typography>
-        The issues here are taking from our github page and displayed here.  We need help writing the code to grab
-        the issue from https://github.com/jeacpa/Project-001/issues.  I will presume we will use React to perform
-        this.
+      <div>
+		The issues here are taken from our &nbsp;
+		<a href="https://github.com/jeacpa/Project-001">
+			github repository page
+		</a>
+		  &nbsp; and displayed here. We use github to maintain our code.
+		<br />
+		Issues are located &nbsp;
+		<a href="https://github.com/jeacpa/Project-001/issues">
+			 here
+		</a>
+
+</div>
+        The issues here are taking from our github repository page and displayed here.  We need help writing the code to grab
+        the issue from https://github.com/jeacpa/Project-001/issues.
       </Typography>
       <IssuesList />
     </PageContainer>
