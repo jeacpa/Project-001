@@ -28,6 +28,9 @@ INTERSECTION_DIRECTION = IntersectionDirection.E
 # Area of incoming traffic to count
 COUNT_ZONE = [(506, 360), (910, 316), (1521, 662), (778, 746)]
 
+# Location to display information text
+INFO_TEXT_POS = (778, 850)
+
 # Number of cars or lower which will trigger a countdown until we request a turn of the light
 ZONE_CLEAR_CAR_COUNT = 5
 
