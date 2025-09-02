@@ -1,3 +1,4 @@
+from typing import Optional, Tuple
 import cv2
 import numpy as np
 from constants import (
@@ -50,7 +51,9 @@ def render_zones(frame: TrackingFrame, frame_image: np.ndarray):
     )
 
 
-def render_text(frame: TrackingFrame, frame_image: np.ndarray):
+def render_text(
+    frame: TrackingFrame, selected_id: Optional[int], frame_image: np.ndarray
+):
     current_y = 50
 
     def out(text):
@@ -72,11 +75,21 @@ def render_text(frame: TrackingFrame, frame_image: np.ndarray):
     out(f"Objects out: {frame.passed_through_count}")
     out(f"Think time: {frame.frame_processing_time_ms}ms")
 
+    if selected_id is not None:
+        out(f"Tracking ID: {selected_id}")
+
+
 def render_info_text(frame: TrackingFrame, frame_image: np.ndarray):
 
     def out(text):
         inverse_text(
-            frame_image, text, INFO_TEXT_POS, (50, 50, 50), TEXT_THICKNESS, TEXT_SCALE, (255, 255, 255)
+            frame_image,
+            text,
+            INFO_TEXT_POS,
+            (50, 50, 50),
+            TEXT_THICKNESS,
+            TEXT_SCALE,
+            (255, 255, 255),
         )
 
     if frame.zone_clear_time > 0:
@@ -84,7 +97,10 @@ def render_info_text(frame: TrackingFrame, frame_image: np.ndarray):
 
         out(f"Less than {ZONE_CLEAR_CAR_COUNT} cars for {round(elapsed)} seconds")
     elif frame.zone_clear_time == -1:
-        out(f"Less than {ZONE_CLEAR_CAR_COUNT} cars for {ZONE_CLEAR_COUNTDOWN_SEC} seconds, light should have changed!")
+        out(
+            f"Less than {ZONE_CLEAR_CAR_COUNT} cars for {ZONE_CLEAR_COUNTDOWN_SEC} seconds, light should have changed!"
+        )
+
 
 def render_traffic_light(frame: TrackingFrame, frame_image: np.ndarray):
     x, y, w, h = 1800, 1, 80, 300  # x, y coordinates, width, height
@@ -178,11 +194,52 @@ def render_single_box(frame_image: np.ndarray, td: TrackingData, color):
     )
 
 
-def render_boxes(frame: TrackingFrame, frame_image: np.ndarray):
+def render_selected_box(frame_image: np.ndarray, td: TrackingData):
+    x1, y1, x2, y2 = td.box
+
+    cv2.polylines(
+        frame_image,
+        [
+            np.array(
+                [
+                    (x1 - 5, y1 - 5),
+                    (x2 + 5, y1 - 5),
+                    (x2 + 5, y2 + 5),
+                    (x1 - 5, y2 + 5),
+                ],
+                dtype=np.int32,
+            )
+        ],
+        isClosed=True,
+        color=(255, 50, 50),
+        thickness=BOX_LINE_THICKNESS,
+    )
+
+
+def render_boxes(
+    frame: TrackingFrame, selected_id: Optional[int], frame_image: np.ndarray
+):
 
     for td in frame.tracking_data:
+        if td.id == selected_id:
+            render_selected_box(frame_image, td)
+
+        if td.under_cursor:
+            # Always show box under cursor in white
+            render_single_box(frame_image, td, (255, 255, 255))
+            continue
+
         if not td.in_zone:
             # Render only objects that are not in the counting zone
             continue
 
-        render_single_box(frame_image, td, (0, 0, 255))
+        render_single_box(
+            frame_image, td, (255, 0, 0) if td.under_cursor else (0, 0, 255)
+        )
+
+
+def render_cursor(frame_image: np.ndarray, cursor_pos: Tuple[int, int]):
+    if cursor_pos is None:
+        return
+
+    cv2.circle(frame_image, cursor_pos, 10, (0, 255, 0), -1)

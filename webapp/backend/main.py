@@ -7,7 +7,6 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-import numpy as np
 
 from pydantic import BaseModel, Field
 
@@ -43,6 +42,8 @@ frame_lock = threading.Lock()
 
 class ControlRequest(BaseModel):
     action: str
+    x: Optional[int] = None
+    y: Optional[int] = None
 
 
 class ControlState(BaseModel):
@@ -65,7 +66,9 @@ class ControlResponse(BaseModel):
         allow_population_by_field_name = True
 
 
-control_state = ControlState(show_zones=True, show_boxes=True, show_light=True, show_text=True)
+control_state = ControlState(
+    show_zones=True, show_boxes=True, show_light=True, show_text=True
+)
 
 control_lock = threading.Lock()
 
@@ -102,9 +105,8 @@ signal.signal(signal.SIGINT, handle_sigint)
 signal.signal(signal.SIGTERM, handle_sigterm)
 
 
-
-def reset_loop(time_start_ms: Optional[int] = TIME_START_MS ):
-    """ 
+def reset_loop(time_start_ms: Optional[int] = TIME_START_MS):
+    """
     Resets the video loop
     This function will try to restart the tracking loop thread as well as video capture.
     However, if this function is called from within the tracking loop thread, it will not restart the thread.
@@ -112,7 +114,10 @@ def reset_loop(time_start_ms: Optional[int] = TIME_START_MS ):
 
     global tracking_loop_thread, tracking_capture, tracking
 
-    in_tracking_loop = (tracking_loop_thread is not None and threading.current_thread() == tracking_loop_thread)
+    in_tracking_loop = (
+        tracking_loop_thread is not None
+        and threading.current_thread() == tracking_loop_thread
+    )
 
     if not in_tracking_loop:
         if tracking_loop_thread and tracking_loop_thread.is_alive():
@@ -128,7 +133,7 @@ def reset_loop(time_start_ms: Optional[int] = TIME_START_MS ):
     stop_event.clear()
 
     tracking_capture = cv2.VideoCapture(VIDEO_FILE)
-    tracking_capture.set(cv2.CAP_PROP_POS_MSEC, time_start_ms)  
+    tracking_capture.set(cv2.CAP_PROP_POS_MSEC, time_start_ms)
     tracking = TrackingManager(
         cap=tracking_capture,
         yolo_model_name=MODEL_NAME,
@@ -176,9 +181,9 @@ def tracking_loop():
         if control_state.show_light:
             render_traffic_light(tracking.current_frame, frame_out)
         if control_state.show_text:
-            render_text(tracking.current_frame, frame_out)
+            render_text(tracking.current_frame, tracking.selected_id, frame_out)
         if control_state.show_boxes:
-            render_boxes(tracking.current_frame, frame_out)
+            render_boxes(tracking.current_frame, tracking.selected_id, frame_out)
 
         render_info_text(tracking.current_frame, frame_out)
 
@@ -270,6 +275,11 @@ async def websocket_control(ws: WebSocket):
                 reset_loop()
             elif action == "infojump":
                 reset_loop(TIME_INTERESTING_START_MS)
+            elif action == "cursor_pos":
+                if req.x is not None and req.y is not None:
+                    tracking.set_cursor_pos((req.x, req.y))
+            elif action == "select_box":
+                tracking.select_box_under_cursor()
 
             res = ControlResponse(state=control_state)
             await ws.send_json(jsonable_encoder(res, by_alias=True))

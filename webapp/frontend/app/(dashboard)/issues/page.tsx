@@ -11,11 +11,11 @@ export default function SearchPage() {
 		<a href="https://github.com/jeacpa/Project-001">
 			github repository page
 		</a>
-		  &nbsp; and displayed here. We use github to maintain our code.
+		&nbsp; and displayed here. We use github to maintain our code.
 		<br />
 		Issues are located &nbsp;
 		<a href="https://github.com/jeacpa/Project-001/issues">
-			 here
+		here
 		</a>
 
 </div>
