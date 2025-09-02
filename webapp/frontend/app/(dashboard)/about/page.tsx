@@ -7,7 +7,7 @@ export default function SearchPage() {
     <Typography>
     Project 001 is a project started by the <a href="https://www.educationfoundationstlucie.org/"> Saint Lucie County Education Foundation
 	</a>
-	 and lead by board member&nbsp;
+	and lead by board member&nbsp;
 	<a href="https://www.linkedin.com/in/jameseabbott/">
 		James Abbott
 	</a>
@@ -16,7 +16,7 @@ export default function SearchPage() {
 	<br />
 	<br />
 	<strong>
-		 Team
+	Team
 	</strong>
 
 	<br/>
