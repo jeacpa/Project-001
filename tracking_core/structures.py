@@ -19,12 +19,14 @@ class TrackingData:
     id: int
     class_id: int
     in_zone: bool
+    under_cursor: bool
 
-    def __init__(self, box, id, class_id):
+    def __init__(self, box, id, class_id, under_cursor: bool = False):
         self.box = box
         self.id = id
         self.class_id = class_id
         self.in_zone = False
+        self.under_cursor = under_cursor
 
     @cached_property
     def centroid(self) -> Tuple[int, int]:

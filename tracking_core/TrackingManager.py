@@ -29,6 +29,7 @@ class TrackingManager:
     _video_height: float
     _video_fps: int
     _last_frame_written: int
+    _starting_frame_index: int
     _current_frame_index: int
     _realtime_frame_index: int
     _current_frame: Optional[TrackingFrame]
@@ -48,6 +49,9 @@ class TrackingManager:
     _light_change_time: float
     _frame_buffer: RingBuffer
     _no_delay: bool
+    _cursor_pos: Optional[Tuple[int, int]]
+    _box_under_cursor: Optional[TrackingData]
+    _selected_id: Optional[int]
 
     # Zone clear time is used for auto light change and can have 3 states:
     #
@@ -72,14 +76,18 @@ class TrackingManager:
 
         self._cap = cap
         self._tracking_classes = tracking_classes
+
+        self._starting_frame_index = self._cap.get(cv2.CAP_PROP_POS_FRAMES)
         self._video_width = self._cap.get(cv2.CAP_PROP_FRAME_WIDTH)
         self._video_height = self._cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
         self._video_fps = self._cap.get(cv2.CAP_PROP_FPS)
         self._last_frame_written = 0
-        self._current_frame_index = 0
-        self._realtime_frame_index = 0
+        self._current_frame_index = self._starting_frame_index
+        self._realtime_frame_index = self._starting_frame_index
         self._current_frame = None
-        self._frame_skipping = frame_skipping
+        self._frame_skipping = (
+            False  # TODO: allow this but for now it messes with rewind
+        )
         self._use_frame = False
         self._is_live = is_live
         self._yolo_model_name = yolo_model_name
@@ -93,6 +101,9 @@ class TrackingManager:
         self._light_duration = 0.0
         self._light_change_time = 0.0
         self._no_delay = no_delay
+        self._cursor_pos = None
+        self._box_under_cursor = None
+        self._selected_id = None
 
         if output_path:
             self._writer = cv2.VideoWriter(
@@ -115,6 +126,14 @@ class TrackingManager:
     def current_frame(self) -> Optional[TrackingFrame]:
         return self._current_frame
 
+    @property
+    def cursor_pos(self) -> Optional[Tuple[int, int]]:
+        return self._cursor_pos
+
+    @property
+    def selected_id(self) -> Optional[int]:
+        return self._selected_id
+
     def _reset_model(self):
 
         self._model = YOLO(self._yolo_model_name)
@@ -124,8 +143,20 @@ class TrackingManager:
 
         self._counter = SimpleCounter(self._count_zone)
 
-    def _extract_tracking_data(self, frame_image: np.ndarray) -> List[TrackingData]:
+    def _is_under_cursor(self, box):
+        if self._cursor_pos is None:
+            return False
 
+        is_under_x = self._cursor_pos[0] >= box[0] and self._cursor_pos[0] <= box[2]
+
+        is_under_y = self._cursor_pos[1] >= box[1] and self._cursor_pos[1] <= box[3]
+
+        # is_under = self._cursor_pos[0] >= box[1] and self._cursor_pos[0] <= box[3] and self._cursor_pos[1] >= box[0] and self._cursor_pos[1] <= box[2]
+
+        # print(f"({self._cursor_pos[0]},{self._cursor_pos[1]})is under = {is_under}, {box}")
+        return is_under_x and is_under_y
+
+    def _extract_tracking_data(self, frame_image: np.ndarray) -> List[TrackingData]:
         results = self._model.track(
             frame_image, persist=True, classes=self._tracking_classes
         )
@@ -141,10 +172,39 @@ class TrackingManager:
 
         classes = res.boxes.cls.cpu().numpy().astype(int)  # Class indices
 
-        return [
-            TrackingData(box=list(map(int, box)), id=ids[idx], class_id=classes[idx])
-            for idx, box in enumerate(boxes)
-        ]
+        tracking_data = []
+
+        # Cursor may be over multiple boxes due to overlap so just use the first one
+
+        under_cursor_count = 0
+        self._box_under_cursor = None
+        found_selected = False
+        for idx, box in enumerate(boxes):
+
+            under_cursor = self._is_under_cursor(box)
+            if under_cursor:
+                under_cursor_count += 1
+                if under_cursor_count > 1:
+                    under_cursor = False
+
+            td = TrackingData(
+                box=list(map(int, box)),
+                id=ids[idx],
+                class_id=classes[idx],
+                under_cursor=under_cursor,
+            )
+            tracking_data.append(td)
+
+            if under_cursor:
+                self._box_under_cursor = td
+            if self._selected_id is not None and td.id == self._selected_id:
+                found_selected = True
+
+        # Reset selected id if we no longer see it
+        if self._selected_id is not None and not found_selected:
+            self._selected_id = None
+
+        return tracking_data
 
     # Returns phase and duration of phase
     def _get_light_phase(self, time_offset: float):
@@ -318,7 +378,7 @@ class TrackingManager:
     # Note that it may be confusing to call advance_frame(True) as the frame doesn't actually
     # advance but we do this to make sure the paused frame is loaded and for any fps delay
     def advance_frame(self, paused: bool):
-        if self._current_frame_index == 0:
+        if self._current_frame_index == self._starting_frame_index:
             self._start_time = time.time()
 
         if not paused:
@@ -351,6 +411,20 @@ class TrackingManager:
 
     def set_frame_skipping(self, frame_skipping: bool):
         self._frame_skipping = frame_skipping
+
+    def set_cursor_pos(self, pos: Optional[Tuple[int, int]]):
+        self._cursor_pos = pos
+
+    def select_box_under_cursor(self):
+        if self._box_under_cursor:
+            self._selected_id = self._box_under_cursor.id
+            self._event_manager.write_event(
+                "tracking_id",
+                {"id": self._selected_id},
+            )
+
+        else:
+            self._selected_id = None
 
     def close(self):
         if self._writer:

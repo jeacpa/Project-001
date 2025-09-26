@@ -14,12 +14,13 @@ export default function SearchPage() {
 	Along with students from Saint Lucie County high schools, the team is working to solve traffic problems
 	around the county using AI and Machine Learning.  Eventually, we would like to share our solution throughout
 	Saint Lucie County, the rest of Florida, and to other states.
+
 	<br />
 
 	<br />
 	<strong>
 		 Team:
-	</strong>
+  </strong>
 
 	<br/>
 	The team is made up of high school students in Saint Lucie County.

@@ -2,7 +2,15 @@ import cv2
 import numpy as np
 
 
-def inverse_text(frame_image: np.ndarray, text, xy, color, thickness=1, scale=1.0):
+def inverse_text(
+    frame_image: np.ndarray,
+    text,
+    xy,
+    color,
+    thickness=1,
+    scale=1.0,
+    text_color=(0, 0, 0),
+):
     (text_width, text_height), baseline = cv2.getTextSize(
         text, cv2.FONT_HERSHEY_SIMPLEX, scale, thickness
     )
@@ -17,7 +25,7 @@ def inverse_text(frame_image: np.ndarray, text, xy, color, thickness=1, scale=1.
         xy,
         cv2.FONT_HERSHEY_SIMPLEX,
         scale,
-        (0, 0, 0),
+        text_color,
         thickness,
         cv2.LINE_AA,
     )
