@@ -134,6 +134,10 @@ class TrackingManager:
     def selected_id(self) -> Optional[int]:
         return self._selected_id
 
+    @property
+    def count_zone(self) -> List[Tuple[int, int]]:
+        return self._count_zone
+
     def _reset_model(self):
 
         self._model = YOLO(self._yolo_model_name)

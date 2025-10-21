@@ -4,6 +4,7 @@ export type ServerState = {
     showText: boolean;
     showZones: boolean;
     paused: boolean;
+    countZone: number[][];
 }
 
 export type ServerControlResponse = {

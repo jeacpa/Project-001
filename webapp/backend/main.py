@@ -1,7 +1,8 @@
+import json
 import signal
 import threading
 import time
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, List, Optional, Tuple
 import cv2
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.encoders import jsonable_encoder
@@ -20,7 +21,13 @@ from tracking_core.annotation_util import (
 
 from tracking_core.EventManager import NullEventManager
 from tracking_core.TrackingManager import TrackingManager
-from constants import COUNT_ZONE, FRAME_BUFFER_FILE, MODEL_NAME, TRACKING_CLASSES
+from constants import (
+    COUNT_ZONE,
+    FRAME_BUFFER_FILE,
+    MODEL_NAME,
+    TRACKING_CLASSES,
+    ZONE_FILE,
+)
 
 app = FastAPI()
 
@@ -44,6 +51,12 @@ class ControlRequest(BaseModel):
     action: str
     x: Optional[int] = None
     y: Optional[int] = None
+    count_zone: Optional[List[List[int]]] = Field(alias="countZone", default=None)
+
+    class Config:
+        allow_population_by_field_name = True
+        populate_by_name = True
+        by_alias = True
 
 
 class ControlState(BaseModel):
@@ -52,6 +65,7 @@ class ControlState(BaseModel):
     show_text: bool = Field(alias="showText", default=False)
     show_boxes: bool = Field(alias="showBoxes", default=False)
     paused: bool = Field(default=False)
+    count_zone: List[Tuple[int, int]] = Field(alias="countZone", default=COUNT_ZONE)
 
     class Config:
         allow_population_by_field_name = True
@@ -67,7 +81,11 @@ class ControlResponse(BaseModel):
 
 
 control_state = ControlState(
-    show_zones=True, show_boxes=True, show_light=True, show_text=True
+    show_zones=True,
+    show_boxes=True,
+    show_light=True,
+    show_text=True,
+    count_zone=COUNT_ZONE,
 )
 
 control_lock = threading.Lock()
@@ -105,6 +123,37 @@ signal.signal(signal.SIGINT, handle_sigint)
 signal.signal(signal.SIGTERM, handle_sigterm)
 
 
+def save_zone(zone: List[List[int]]) -> None:
+    """Save a zone (list of [x, y] points) to the known file."""
+    with ZONE_FILE.open("w", encoding="utf-8") as f:
+        json.dump(zone, f, indent=2)
+
+
+def load_zone() -> List[Tuple[int, int]]:
+    """
+    Load a zone from the known file.
+    If no saved zone exists yet, return the default COUNT_ZONE.
+    """
+    if not ZONE_FILE.exists():
+        print("No zone file found, using default")
+        return COUNT_ZONE
+    try:
+        with ZONE_FILE.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        # validate it's a list of [int, int]
+        if isinstance(data, list) and all(
+            isinstance(p, list) and len(p) == 2 and all(isinstance(v, int) for v in p)
+            for p in data
+        ):
+            return [tuple(point) for point in data]
+
+    except (OSError, json.JSONDecodeError):
+        pass
+    # fallback if file is corrupted or invalid
+    print("Invalid zone file, using default")
+    return COUNT_ZONE
+
+
 def reset_loop(time_start_ms: Optional[int] = TIME_START_MS):
     """
     Resets the video loop
@@ -132,13 +181,16 @@ def reset_loop(time_start_ms: Optional[int] = TIME_START_MS):
 
     stop_event.clear()
 
+    # Insure zone is loaded
+    control_state.count_zone = load_zone()
+
     tracking_capture = cv2.VideoCapture(VIDEO_FILE)
     tracking_capture.set(cv2.CAP_PROP_POS_MSEC, time_start_ms)
     tracking = TrackingManager(
         cap=tracking_capture,
         yolo_model_name=MODEL_NAME,
         tracking_classes=TRACKING_CLASSES,
-        count_zone=COUNT_ZONE,
+        count_zone=control_state.count_zone,
         event_manager=NullEventManager(),
         is_live=False,  # Not live, we are reading a video file
         buffer_file_name=FRAME_BUFFER_FILE,
@@ -177,7 +229,7 @@ def tracking_loop():
         frame_out = tracking.current_frame.raw_frame
 
         if control_state.show_zones:
-            render_zones(tracking.current_frame, frame_out)
+            render_zones(tracking.current_frame, tracking.count_zone, frame_out)
         if control_state.show_light:
             render_traffic_light(tracking.current_frame, frame_out)
         if control_state.show_text:
@@ -267,6 +319,9 @@ async def websocket_control(ws: WebSocket):
             elif action == "toggle_pause":
                 with control_lock:
                     control_state.paused = not control_state.paused
+            elif action == "set_paused":
+                with control_lock:
+                    control_state.paused = True
             elif action == "fast_forward" and tracking:
                 tracking.go_forward(1)
             elif action == "rewind" and tracking:
@@ -280,6 +335,13 @@ async def websocket_control(ws: WebSocket):
                     tracking.set_cursor_pos((req.x, req.y))
             elif action == "select_box":
                 tracking.select_box_under_cursor()
+            elif action == "set_zone":
+                save_zone(req.count_zone)
+                # Need to reset the loop so that
+                # a) New zone is loaded
+                # b) Counters are reset for cars in/out
+                # c) Frame buffer is cleared because zone has changed
+                reset_loop()
 
             res = ControlResponse(state=control_state)
             await ws.send_json(jsonable_encoder(res, by_alias=True))

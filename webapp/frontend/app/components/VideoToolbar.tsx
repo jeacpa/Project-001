@@ -12,61 +12,38 @@ import PlayIcon from '@mui/icons-material/PlayArrow';
 import FastForwardIcon from "@mui/icons-material/FastForward";
 import FastRewindIcon from "@mui/icons-material/FastRewind";
 import RestartIcon from "@mui/icons-material/RestartAlt";
+import CropIcon from "@mui/icons-material/Crop";
 import InfoJumpIcon from "@mui/icons-material/ErrorOutline";
 import SimpleToggleButton from "../simpleWrappers/ToggleButton";
 import useWS from "../hooks/useWS";
-import { shallowEqual } from "../util";
+import { deepEqual } from "../util";
 
 interface VideoToolbarProps {
     onRestart?: () => void;
+    onZoneResize?: (state?: ServerState) => void;
 }
 
-export default function VideoToolbar({ onRestart }: VideoToolbarProps) {
+export default function VideoToolbar({ onRestart, onZoneResize }: VideoToolbarProps) {
 
-    // const ws = React.useRef<WebSocket | null>(null);
     const [serverState, setServerState] = React.useState<ServerState | undefined>();
+    
+
     const ws = useWS((data) => {
 
-            // const msg = JSON.parse(data) as ServerControlResponse;
-            // Update the server state with the received message
-            // setServerState(msg.state);
-            if (shallowEqual((data as ServerControlResponse).state, serverState)) 
+            // Update the server state with the received message if state has changed
+            if (deepEqual((data as ServerControlResponse).state, serverState)) 
                 return;
 
             setServerState((data as ServerControlResponse).state);
     }, () => {
-        // Send an inital blank action to get the initial state
+        // When the connection gets open, send an inital blank action to get the initial state
         return { action: "" };
     });
 
     const sendAction = useCallback((action: string) => {
         ws.sendMessage({ action });
 
-        // if (ws.current?.readyState === WebSocket.OPEN) {
-        //     ws.current.send(JSON.stringify({ action }));
-        // }
     }, [ws]);
-
-    // React.useEffect(() => {
-    //     const socket = new WebSocket(process.env.NEXT_PUBLIC_CONTROL_URL!);
-    //     ws.current = socket;
-
-    //     socket.onopen = () => {
-    //         // Send an inital blank action to get the initial state
-    //         sendAction("");
-
-    //     };
-    //     socket.onmessage = (event) => {
-    //         const msg = JSON.parse(event.data) as ServerControlResponse;
-    //         // Update the server state with the received message
-    //         setServerState(msg.state);
-    //     };
-    //     socket.onclose = () => {
-    //         console.log("WebSocket disconnected");
-    //     };
-
-    //     return () => socket.close();
-    // }, [sendAction]);
 
 
     const StyledToggleButtonGroup = styled(ToggleButtonGroup)(({ theme }) => ({
@@ -167,6 +144,15 @@ export default function VideoToolbar({ onRestart }: VideoToolbarProps) {
 
                     icon={<RestartIcon />}
                     tooltip={"Restart video"}
+                />
+                <SimpleToggleButton
+                    onChange={() => { 
+                        sendAction("set_paused");
+                        onZoneResize?.(serverState);
+                    }}
+
+                    icon={<CropIcon />}
+                    tooltip={"Change car counting zone"}
                 />
             </StyledToggleButtonGroup>
         </Paper>

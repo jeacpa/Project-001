@@ -1,3 +1,4 @@
+from pathlib import Path
 from tracking_core.structures import IntersectionDirection, LightColor
 
 
@@ -25,8 +26,10 @@ FRAME_BUFFER_FILE = "buffer.dat"
 INTERSECTION_ID = "001"
 INTERSECTION_DIRECTION = IntersectionDirection.E
 
-# Area of incoming traffic to count
+# Default area of incoming traffic to count
 COUNT_ZONE = [(506, 360), (910, 316), (1521, 662), (778, 746)]
+
+ZONE_FILE = Path("zone.json")
 
 # Location to display information text
 INFO_TEXT_POS = (778, 850)

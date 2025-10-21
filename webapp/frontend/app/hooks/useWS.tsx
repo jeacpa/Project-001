@@ -1,5 +1,9 @@
 import React, { useCallback } from "react";
 
+// Simple websocket hook that takes an optional callback for when
+// a message is received and when the connection is opened
+// Takes care of setting up and tearing down the connection as well as serializing/deserializing messages
+// Current protocol is simply JSON strings
 export default function useWS(onMessage?: (data: unknown) => void, onOpen?: () => unknown) {
     const ws = React.useRef<WebSocket | null>(null);
 

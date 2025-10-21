@@ -6,8 +6,18 @@ import { Paper } from '@mui/material';
 import VideoToolbar from '../components/VideoToolbar';
 import Image from 'next/image';
 import useWS from '../hooks/useWS';
+import ZoneResizeDialog from '../dialogs/ZoneResizeDialog';
+import { ServerState } from '../structures';
 
+interface State {
+  zoneResizeOpen: boolean;
+  state?: ServerState;
+}
 export default function HomePage() {
+  const [state, setState] = React.useState<State>({ zoneResizeOpen: false });
+
+  // const [zoneResizeOpen, setZoneResizeOpen] = React.useState(false);
+
   const ws = useWS();
   const handleMouseMove = (e: React.MouseEvent<HTMLImageElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -29,8 +39,12 @@ export default function HomePage() {
         sx={{ p: '10px' }}
       >
 
-        <VideoToolbar />
+        <VideoToolbar onZoneResize={(state?: ServerState) => {
+
+          setState({ zoneResizeOpen: true, state })
+        }} />
         <Image
+          id="videoFeed"
           src={process.env.NEXT_PUBLIC_VIDEO_URL ?? ''}
           alt="Video Stream"
           width={1920}
@@ -41,6 +55,17 @@ export default function HomePage() {
           onClick={handleMouseClick}
         />
       </Paper >
+      <ZoneResizeDialog
+        open={state.zoneResizeOpen}
+        zone={state.state?.countZone}
+        onClose={() => setState({ zoneResizeOpen: false })}
+        onSetZone={(zone?: number[][]) => {
+          ws.sendMessage({ action: "set_zone", countZone: zone });
+          setState({ zoneResizeOpen: false });
+        }}
+
+      />
+
     </PageContainer>
   );
 }

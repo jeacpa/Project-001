@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 import cv2
 import numpy as np
 from constants import (
@@ -7,7 +7,6 @@ from constants import (
     BOX_TEXT_COLOR,
     BOX_TEXT_SCALE,
     BOX_TEXT_THICKNESS,
-    COUNT_ZONE,
     GREEN_LIGHT,
     INFO_TEXT_POS,
     LINE_COLOR,
@@ -27,7 +26,9 @@ from tracking_core.SimpleCounter import TrackingData
 from tracking_core.structures import LightColor, TrackingFrame
 
 
-def render_zones(frame: TrackingFrame, frame_image: np.ndarray):
+def render_zones(
+    frame: TrackingFrame, zone: List[Tuple[int, int]], frame_image: np.ndarray
+):
 
     line_color = LINE_COLOR
 
@@ -44,7 +45,7 @@ def render_zones(frame: TrackingFrame, frame_image: np.ndarray):
 
     cv2.polylines(
         frame_image,
-        [np.array(COUNT_ZONE, dtype=np.int32)],
+        [np.array(zone, dtype=np.int32)],
         isClosed=True,
         color=line_color,
         thickness=LINE_THICKNESS,
