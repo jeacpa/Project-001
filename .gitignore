@@ -10,6 +10,7 @@
 .vscode
 .idea
 buffer.dat
+zone.json
 
 # React app
 /webapp/frontend/node_modules

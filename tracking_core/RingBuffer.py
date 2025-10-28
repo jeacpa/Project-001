@@ -21,7 +21,7 @@ class RingBuffer:
 
     def __init__(self, file_name: str, size: int):
         self._size = size
-        self._file = open(file_name, "w+b")
+        self._file = open(file_name, "w+b")  # Truncate file if it exists
         self._entries = [None] * self._size
         self._id_map = {}
         self._next = 0
