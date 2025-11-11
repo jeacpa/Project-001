@@ -17,7 +17,7 @@ export default function SearchPage() {
         <strong> AKEL Homes donates $10,000 to Project 001 </strong>
         Thanks to a generous donation from <a href="https://akelhomes.com/">
 		AKEL Homes </a> the Education Foundation was able to purchase an additional laptop and an electronic
-		whiteboard from <a href="vibe.us" Vibe> </a>
+		whiteboard from <a href="vibe.us" >Vibe</a>
         <br />
 
 
