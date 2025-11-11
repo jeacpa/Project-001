@@ -5,7 +5,7 @@ export default function SearchPage() {
   return (
     <PageContainer breadcrumbs={[]}>
     <Typography>
-    <strong> Project 001 - "If you want to be successful, solve a problem" </strong>
+    <strong> Project 001 - &quot;If you want to be successful, solve a problem&quot; </strong>
     <br /><br/>
     Project 001 is a project started by the
     <a href="https://www.educationfoundationstlucie.org/">&nbsp;Saint Lucie County Education Foundation</a>
@@ -19,8 +19,8 @@ export default function SearchPage() {
 
 	<br />
 	<strong>
-		 Team:
-  </strong>
+	Team:
+	</strong>
 
 	<br/>
 	The team is made up of high school students in Saint Lucie County.
@@ -38,8 +38,8 @@ export default function SearchPage() {
     <br/>
 
 	If you are interested in helping with Project 001 or any other of our projects, please contact
-	<a href="mailto:thom.jones@educationfoundationstlucie.org" subject="Education Foundation - Project 001"> Thom Jones</a>
-	&nbsp; or <a href="mailto:jabbott@efslc.org" subject="Education Foundation - Project 001"> James Abbott</a>
+	<a href="mailto:thom.jones@educationfoundationstlucie.org"> Thom Jones</a>
+	&nbsp; or <a href="mailto:jabbott@efslc.org"> James Abbott</a>
 
     </Typography>
 
