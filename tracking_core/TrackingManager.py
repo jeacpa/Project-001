@@ -371,7 +371,7 @@ class TrackingManager:
         end = time.time()
 
         # Artificially wait if needed to preserve video fps
-        if not self._no_delay and not self._frame_skipping:
+        if not self._no_delay and not self._frame_skipping and self._video_fps > 0:
             wanted_frame_time = 1 / self._video_fps
             actual_frame_time = end - start
 
