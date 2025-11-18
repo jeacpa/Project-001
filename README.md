@@ -226,3 +226,58 @@ $ python CarTrackingLoop.py
 ```
 
 You should see a couple of one-time downloads then a new window will appear on your Windows desktop which will be displaying the object recognition example and it should also be using your GPU for best performance!
+
+
+# The Web App
+
+There is also a backend (python) and frontend (nextjs/react) that will expose a webpage to view the tracking video.
+
+(more to add but for now)
+
+To start this:
+
+1. Make sure webapp/frontend contains a file called `env.local`.  If it does not exist create it and add this code to it:
+
+```
+# Generate a secret with `npx auth secret`
+# and replace the value below with it
+AUTH_SECRET="NNzT/1VG3dALAK9Gk/nh1znTts8G65DYC5wZ0mganK8=" # Added by `npx auth`. Read more: https://cli.authjs.dev
+
+# Add secrets for your auth providers to the .env.local file
+
+GOOGLE_CLIENT_ID=1037635109277-65bnnnnrkon8g3ofbdn57tu8gpbontcp.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
+
+
+GITHUB_CLIENT_ID=Ov23liFZbA9mXBWcfJgq
+GITHUB_CLIENT_SECRET=b2484222b3f2b8c45311b4b5bdd2f3511376a9d8
+
+
+DISCORD_CLIENT_ID=1384556366966034502
+DISCORD_CLIENT_SECRET=Edg8BcIqXgUF1xKLC68mXVzuNwzAAdre
+
+    
+
+NEXT_PUBLIC_VIDEO_URL=http://localhost:8000/video
+NEXT_PUBLIC_CONTROL_URL=ws://localhost:8000/ws/control
+
+AUTH_TRUST_HOST=http://localhost:3000
+```
+
+2. From the root run:
+
+```
+./startbe
+```
+
+This will start the python backend.
+
+3.  From another terminal window run:
+
+```
+./startfe
+```
+
+This will start the nextjs frontend.
+
+4.  Browse to [localhost:3000](http://localhost:3000)
