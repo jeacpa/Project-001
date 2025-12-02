@@ -1,0 +1,2 @@
+# Start backend with multiple workers
+PYTHONPATH=. uvicorn webapp.backend.main:app --reload --workers 5

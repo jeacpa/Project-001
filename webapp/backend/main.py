@@ -1,3 +1,4 @@
+import asyncio
 import json
 import signal
 import threading
@@ -28,8 +29,24 @@ from constants import (
     TRACKING_CLASSES,
     ZONE_FILE,
 )
+from webapp.backend.memory_streamer import MemoryStreamer
 
-app = FastAPI()
+mem_stream: Optional[MemoryStreamer] = None
+
+async def lifespan(app: FastAPI):
+    global mem_stream
+
+    print("Starting memory streamer")
+    mem_stream = MemoryStreamer()
+
+    yield
+
+    print("Shutting down memory streamer")
+    mem_stream.close()
+
+app = FastAPI(lifespan=lifespan)
+
+
 
 
 FRAME_BUFFER_COUNT = 3
@@ -104,22 +121,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+
 original_sigterm = signal.getsignal(signal.SIGTERM)
 
 
 def handle_sigterm(signum, frame):
+    print("SIGTERM received, shutting down...")
     stop_event.set()
 
     if callable(original_sigterm):
         original_sigterm(signum, frame)
 
 
-def handle_sigint(signum, frame):
-    stop_event.set()
+# def handle_sigint(signum, frame):
+#     stop_event.set()
 
 
 # Register signal handlers (only in main thread!)
-signal.signal(signal.SIGINT, handle_sigint)
+# signal.signal(signal.SIGINT, handle_sigint)
 signal.signal(signal.SIGTERM, handle_sigterm)
 
 
@@ -239,35 +259,45 @@ def tracking_loop():
 
         render_info_text(tracking.current_frame, frame_out)
 
-        with frame_lock:
-            current_frame = frame_out
+        success: bool
+        jpeg: Optional[cv2.Mat]
+        success, jpeg = cv2.imencode(".jpg", frame_out)
+        if not success or jpeg is None:
+            continue
+
+        frame_bytes: bytes = jpeg.tobytes()
+
+        mem_stream.produce_frame(frame_bytes)
+
+        # with frame_lock:
+        #     current_frame = frame_out
 
     stop_event.set()
 
-
 async def jpeg_stream(request: Request) -> AsyncGenerator[bytes, None]:
+
+    frame_count = 0
 
     try:
         while not stop_event.is_set():
             if await request.is_disconnected():
                 print("Client disconnected")
                 break
+    
+            frame_bytes: Optional[bytes] = mem_stream.consume_frame()
 
-            frame_copy: Optional[cv2.Mat]
-            with frame_lock:
-                frame_copy = current_frame.copy() if current_frame is not None else None
+            if frame_bytes is None:
+                # See if stream is still connected
+                if not mem_stream.is_connected:
+                    print("Producer disconnected, retry later")
+                    break
 
-            if frame_copy is None:
-                time.sleep(0.01)
+                await asyncio.sleep(0.01)
                 continue
 
-            success: bool
-            jpeg: Optional[cv2.Mat]
-            success, jpeg = cv2.imencode(".jpg", frame_copy)
-            if not success or jpeg is None:
-                continue
-
-            frame_bytes: bytes = jpeg.tobytes()
+            frame_count += 1
+            
+            # print(f"!!! Time to encode frame #{frame_count}: ", (end - start) * 1000, "ms")
 
             yield (
                 b"--frame\r\n"
@@ -282,8 +312,7 @@ async def jpeg_stream(request: Request) -> AsyncGenerator[bytes, None]:
         yield (
             b"--frame\r\n" b"Content-Type: image/jpeg\r\n" b"Content-Length: 0\r\n\r\n"
         )
-
-
+        
 @app.get("/video")
 async def stream_video(request: Request) -> StreamingResponse:
 
@@ -301,6 +330,7 @@ async def websocket_control(ws: WebSocket):
         while True:
             data = await ws.receive_json()
             req = ControlRequest.model_validate(data)
+
 
             action = req.action
 
@@ -331,7 +361,7 @@ async def websocket_control(ws: WebSocket):
             elif action == "infojump":
                 reset_loop(TIME_INTERESTING_START_MS)
             elif action == "cursor_pos":
-                if req.x is not None and req.y is not None:
+                if req.x is not None and req.y is not None and tracking:
                     tracking.set_cursor_pos((req.x, req.y))
             elif action == "select_box":
                 tracking.select_box_under_cursor()
@@ -350,5 +380,5 @@ async def websocket_control(ws: WebSocket):
         print("WS Client disconnected")
 
 
-reset_loop()
+# reset_loop()
 # threading.Thread(target=tracking_loop, daemon=True).start()
