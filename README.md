@@ -24,7 +24,7 @@
 #
 
 # How to run Project001 using Windows with an NVIDIA GPU
-
+#
 To run Project001 on a Windows machine in such a way that it runs as close as possible to the target environment (linux) we will use the Windows Subsystem for Linux (WSL).  This feature of Windows allows native linux to run on top of the Windows kernel and with the right libraries installed these apps can also take advantage of GPU acceleration.  These instructions describe how to set up your WSL environment, install the additional GPU support libraries, set up X window compatibility layer (so linux can display Windows-like windows on the desktop), and finally to install and run Project001.
 
 Doc Note: For prompt examples below, those prefixed with '>' are commands that run with the Windows Command Prompt and those prefixed with '$' are commands that run within the Linux shell.
