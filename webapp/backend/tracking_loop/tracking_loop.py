@@ -120,6 +120,8 @@ def tracking_loop():
                 is_consumer_paused = True
             time.sleep(1)
         else:
+            if is_consumer_paused:
+                print("Consumer detected, resuming tracking loop...")
             is_consumer_paused = False
 
         if wb_globals.reset_loop_requested != -1:
