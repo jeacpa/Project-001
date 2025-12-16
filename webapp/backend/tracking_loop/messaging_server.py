@@ -4,6 +4,7 @@ import threading
 
 
 from constants import (
+    IPC_ADDRESS,
     IPC_PORT,
 )
 
@@ -70,12 +71,16 @@ def messaging_client_handler(conn):
 
 
 def messaging_server():
-    listener = Listener(f'localhost:{IPC_PORT}')
+    try:
+        listener = Listener(IPC_ADDRESS)
+    except OSError as e:
+        print(f"!!!! Messaging server failed to start on {IPC_ADDRESS}: {e}")
+        return
 
     # Hack: set timeout on accept so we can check for stop_event
     listener._listener._socket.settimeout(1.0)
 
-    print("Messaging server started on port", IPC_PORT)
+    print("Messaging server started on ", IPC_ADDRESS)
 
     try:
         while not wb_globals.stop_event.is_set():

@@ -1,11 +1,12 @@
 
 from dataclasses import dataclass
 from multiprocessing.connection import Client
+from telnetlib import IP
 from typing import List, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
-from constants import COUNT_ZONE, IPC_PORT
+from constants import COUNT_ZONE, IPC_ADDRESS
 
 class ControlRequest(BaseModel):
     action: str
@@ -52,7 +53,7 @@ control_state = ControlState(
 class MessageingClient:
     _address: str
 
-    def __init__(self, address: str = f'localhost:{IPC_PORT}'):
+    def __init__(self, address: str = IPC_ADDRESS):
         self._address = address
         
     def send_message(self, msg: ControlRequest) -> ControlResponse:

@@ -88,9 +88,8 @@ async def jpeg_stream(request: Request) -> AsyncGenerator[bytes, None]:
         )
         
 @app.get("/video")
-async def stream_video(request: Request) -> StreamingResponse:
-
-    print("Streaming")
+def stream_video(request: Request) -> StreamingResponse:
+    print("Streaming (sync)")
     return StreamingResponse(
         jpeg_stream(request), media_type="multipart/x-mixed-replace; boundary=frame"
     )
