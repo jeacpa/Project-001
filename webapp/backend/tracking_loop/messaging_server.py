@@ -5,7 +5,6 @@ import threading
 
 from constants import (
     IPC_ADDRESS,
-    IPC_PORT,
 )
 
 from webapp.backend.messaging import ControlRequest, ControlResponse

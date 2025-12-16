@@ -12,12 +12,14 @@ from webapp.backend.tracking_loop.memory_streamer import MemoryStreamer
 
 stop_event = threading.Event()
 
+
 async def lifespan(app: FastAPI):
     global stop_event
 
     yield
 
     stop_event.set()
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -28,6 +30,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 async def jpeg_stream(request: Request) -> AsyncGenerator[bytes, None]:
 
@@ -46,7 +49,7 @@ async def jpeg_stream(request: Request) -> AsyncGenerator[bytes, None]:
             if await request.is_disconnected():
                 print("Client disconnected")
                 break
-    
+
             now = time.time()
             if (now - last_status_ts) > 2:
                 # Periodic housekeeping (silent)
@@ -60,10 +63,12 @@ async def jpeg_stream(request: Request) -> AsyncGenerator[bytes, None]:
                 if not consumer.is_connected:
                     print("Producer disconnected, retry later")
                     break
-                
+
                 # Exponential backoff: if we keep getting None, sleep longer
                 consecutive_none_count += 1
-                sleep_time = min(0.01 * (1 + consecutive_none_count // 10), 0.1)  # Cap at 100ms
+                sleep_time = min(
+                    0.01 * (1 + consecutive_none_count // 10), 0.1
+                )  # Cap at 100ms
                 sleeps += 1
                 await asyncio.sleep(sleep_time)
                 continue
@@ -86,7 +91,8 @@ async def jpeg_stream(request: Request) -> AsyncGenerator[bytes, None]:
         yield (
             b"--frame\r\n" b"Content-Type: image/jpeg\r\n" b"Content-Length: 0\r\n\r\n"
         )
-        
+
+
 @app.get("/video")
 def stream_video(request: Request) -> StreamingResponse:
     print("Streaming (sync)")
@@ -111,7 +117,9 @@ async def websocket_control(ws: WebSocket):
     except WebSocketDisconnect:
         print("WS Client disconnected")
 
+
 original_sigterm = signal.getsignal(signal.SIGTERM)
+
 
 def handle_sigterm(signum, frame):
     stop_event.set()
@@ -122,6 +130,7 @@ def handle_sigterm(signum, frame):
 
 def handle_sigint(signum, frame):
     stop_event.set()
+
 
 signal.signal(signal.SIGINT, handle_sigint)
 signal.signal(signal.SIGTERM, handle_sigterm)
