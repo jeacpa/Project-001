@@ -69,8 +69,8 @@ export default function ZoneResizeDialog({ open, onClose, onSetZone, zone }: Zon
         ctx.lineWidth = 2;
         ctx.fillStyle = 'yellow';
 
-        const xf = canvasRef.current.clientWidth / process.env.NEXT_PUBLIC_VIDEO_WIDTH;
-        const yf = canvasRef.current.clientHeight / process.env.NEXT_PUBLIC_VIDEO_HEIGHT;
+        const xf = canvasRef.current.clientWidth / Number(process.env.NEXT_PUBLIC_VIDEO_WIDTH);
+        const yf = canvasRef.current.clientHeight / Number(process.env.NEXT_PUBLIC_VIDEO_HEIGHT);
 
         const scaledZone = currentZone.current.map(pt => [pt[0] * xf, pt[1] * yf]);
 
@@ -127,8 +127,8 @@ export default function ZoneResizeDialog({ open, onClose, onSetZone, zone }: Zon
 
         } else {
 
-            const xf = canvasRef.current.clientWidth / process.env.NEXT_PUBLIC_VIDEO_WIDTH;
-            const yf = canvasRef.current.clientHeight / process.env.NEXT_PUBLIC_VIDEO_HEIGHT;
+            const xf = canvasRef.current.clientWidth / Number(process.env.NEXT_PUBLIC_VIDEO_WIDTH);
+            const yf = canvasRef.current.clientHeight / Number(process.env.NEXT_PUBLIC_VIDEO_HEIGHT);
 
             const scaledZone = currentZone.current.map(pt => [pt[0] * xf, pt[1] * yf]);
 
@@ -171,8 +171,8 @@ export default function ZoneResizeDialog({ open, onClose, onSetZone, zone }: Zon
             const [dx, dy] = dragDelta;
 
             currentZone.current[hoverPoint] = [
-                Math.min(process.env.NEXT_PUBLIC_VIDEO_WIDTH, Math.max(0, Math.round(currentZone.current[hoverPoint][0] + dx * (process.env.NEXT_PUBLIC_VIDEO_WIDTH / canvasRef.current.clientWidth)))),
-                Math.min(process.env.NEXT_PUBLIC_VIDEO_HEIGHT, Math.max(0, Math.round(currentZone.current[hoverPoint][1] + dy * (process.env.NEXT_PUBLIC_VIDEO_HEIGHT / canvasRef.current.clientHeight)))),
+                Math.min(Number(process.env.NEXT_PUBLIC_VIDEO_WIDTH), Math.max(0, Math.round(currentZone.current[hoverPoint][0] + dx * (Number(process.env.NEXT_PUBLIC_VIDEO_WIDTH) / canvasRef.current.clientWidth)))),
+                Math.min(Number(process.env.NEXT_PUBLIC_VIDEO_HEIGHT), Math.max(0, Math.round(currentZone.current[hoverPoint][1] + dy * (Number(process.env.NEXT_PUBLIC_VIDEO_HEIGHT) / canvasRef.current.clientHeight)))),
             ];
         }
 

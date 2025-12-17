@@ -21,8 +21,8 @@ export default function HomePage() {
   const ws = useWS();
   const handleMouseMove = (e: React.MouseEvent<HTMLImageElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * process.env.NEXT_PUBLIC_VIDEO_WIDTH; //x position within the element.
-    const y = ((e.clientY - rect.top) / rect.height) * process.env.NEXT_PUBLIC_VIDEO_HEIGHT; //y position within the element.
+    const x = ((e.clientX - rect.left) / rect.width) * Number(process.env.NEXT_PUBLIC_VIDEO_WIDTH); //x position within the element.
+    const y = ((e.clientY - rect.top) / rect.height) * Number(process.env.NEXT_PUBLIC_VIDEO_HEIGHT); //y position within the element.
 
     ws.sendMessage({ action: "cursor_pos", x: Math.round(x), y: Math.round(y) });
   };
