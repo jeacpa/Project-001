@@ -1,8 +1,6 @@
-import json
-import signal
 import threading
 import time
-from typing import List, Optional, Tuple
+from typing import Optional
 import cv2
 
 
@@ -17,24 +15,19 @@ from tracking_core.annotation_util import (
 from tracking_core.EventManager import NullEventManager
 from tracking_core.TrackingManager import TrackingManager
 from constants import (
-    COUNT_ZONE,
     FRAME_BUFFER_FILE,
     MODEL_NAME,
-    TIME_GOOD_START_MS,
+    TARGET_FPS,
+    TARGET_RESOLUTION,
+    TIME_START_MS,
     TRACKING_CLASSES,
-    ZONE_FILE,
+    VIDEO_FILE,
 )
 
+from webapp.backend.tracking_loop.count_zone import load_zone
 from webapp.backend.tracking_loop.memory_streamer import MemoryStreamer
 import webapp.backend.globals as wb_globals
 
-FRAME_BYTES_PER_PIXEL = 3
-FRAME_WIDTH = 1920
-FRAME_HEIGHT = 1080
-
-VIDEO_FILE = "Cashmere.MP4"
-TIME_NEAR_END_MS = 450000  # Time in milliseconds near the end of the video
-TIME_START_MS = TIME_GOOD_START_MS  # Start time in milliseconds for the video
 
 current_frame: Optional[cv2.Mat] = None
 messaging_server_thread: Optional[threading.Thread] = None
@@ -44,36 +37,6 @@ tracking_capture: Optional[cv2.VideoCapture] = None
 
 mem_stream = MemoryStreamer(True)
 
-
-def save_zone(zone: List[List[int]]) -> None:
-    """Save a zone (list of [x, y] points) to the known file."""
-    with ZONE_FILE.open("w", encoding="utf-8") as f:
-        json.dump(zone, f, indent=2)
-
-
-def load_zone() -> List[Tuple[int, int]]:
-    """
-    Load a zone from the known file.
-    If no saved zone exists yet, return the default COUNT_ZONE.
-    """
-    if not ZONE_FILE.exists():
-        print("No zone file found, using default")
-        return COUNT_ZONE
-    try:
-        with ZONE_FILE.open("r", encoding="utf-8") as f:
-            data = json.load(f)
-        # validate it's a list of [int, int]
-        if isinstance(data, list) and all(
-            isinstance(p, list) and len(p) == 2 and all(isinstance(v, int) for v in p)
-            for p in data
-        ):
-            return [tuple(point) for point in data]
-
-    except (OSError, json.JSONDecodeError):
-        pass
-    # fallback if file is corrupted or invalid
-    print("Invalid zone file, using default")
-    return COUNT_ZONE
 
 def stop_tracking():
     global tracking_capture
@@ -91,17 +54,30 @@ def reset_tracking(start: float = TIME_START_MS):
     stop_tracking()
 
     tracking_capture = cv2.VideoCapture(VIDEO_FILE)
+
+    w = int(tracking_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+    h = int(tracking_capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = tracking_capture.get(cv2.CAP_PROP_FPS)
+    frame_count = int(tracking_capture.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    print(f"Stats for video stream '{VIDEO_FILE}': {w}x{h}, fps={fps}, total frames={frame_count}")
+
     tracking_capture.set(cv2.CAP_PROP_POS_MSEC, start)
     wb_globals.tracking = TrackingManager(
         cap=tracking_capture,
         yolo_model_name=MODEL_NAME,
         tracking_classes=TRACKING_CLASSES,
-        count_zone=wb_globals.control_state.count_zone,
+        count_zone=load_zone(),
         event_manager=NullEventManager(),
         is_live=False,  # Not live, we are reading a video file
         buffer_file_name=FRAME_BUFFER_FILE,
+        target_video_res=TARGET_RESOLUTION,
+        target_video_fps=TARGET_FPS
         # no_delay=True
     )
+
+    # Reset count zone if it was modified by tracking manager
+    wb_globals.control_state.count_zone = wb_globals.tracking.count_zone
 
     wb_globals.tracking.advance_frame(False)
 

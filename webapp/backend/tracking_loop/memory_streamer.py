@@ -6,13 +6,6 @@ import numpy as np
 from multiprocessing import shared_memory
 from multiprocessing.resource_tracker import unregister, _CLEANUP_FUNCS
 
-# Original (pre-JPEG) frame shape
-HEIGHT = 1080
-WIDTH = 1920
-CHANNELS = 3
-DTYPE = np.uint8
-
-FRAME_SHAPE = (HEIGHT, WIDTH, CHANNELS)
 
 # Maximum allowed JPEG size (bytes)
 # Adjust upward if your real frames + quality are larger.

@@ -24,9 +24,6 @@ stop_event.clear()
 
 start_messaging_server()
 
-# Insure zone is loaded
-control_state.count_zone = load_zone()
-
 run_loop()
 
 stop_messaging_server()

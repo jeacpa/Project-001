@@ -72,7 +72,12 @@ BOX_TEXT_SCALE = 0.4
 
 MOUSE_COLOR = (0, 0, 255)
 
-IPC_ADDRESS = "127.0.0.1:9002"
+IPC_ADDRESS = "127.0.0.1:9002" # Communicates between tracking_main and web_main
 
+TARGET_RESOLUTION = (1280, 720, 3)  # Width, Height, Channels
+TARGET_FPS = 15
+VIDEO_FILE = "Cashmere.MP4"
+TIME_NEAR_END_MS = 450000  # Time in milliseconds near the end of the video
 TIME_GOOD_START_MS = 27000
 TIME_INTERESTING_START_MS = 55000
+TIME_START_MS = TIME_GOOD_START_MS  # Start time in milliseconds for the video

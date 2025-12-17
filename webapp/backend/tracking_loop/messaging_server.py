@@ -9,8 +9,8 @@ from constants import (
 
 from webapp.backend.messaging import ControlRequest, ControlResponse
 import webapp.backend.globals as wb_globals
-from webapp.backend.tracking_loop.tracking_loop import save_zone
 from constants import TIME_INTERESTING_START_MS, TIME_GOOD_START_MS
+from webapp.backend.tracking_loop.count_zone import save_zone
 
 messaging_server_thread: threading.Thread
 
