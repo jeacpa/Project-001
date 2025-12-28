@@ -95,7 +95,7 @@ $ sudo dpkg -i cuda-keyring_1.1-1_all.deb
 
 $ sudo apt-get update
 
-$ sudo apt-get -y install cuda-toolkit-12-9
+$ sudo apt-get -y install cuda-toolkit-13-1
 ```
 
 This will take some time.
@@ -281,3 +281,20 @@ This will start the python backend.
 This will start the nextjs frontend.
 
 4.  Browse to [localhost:3000](http://localhost:3000)
+
+# Web App Architecture
+# Video pipeline
+
+```mermaid
+architecture-beta
+    group api(cloud)[API]
+
+    service db(database)[Database] in api
+    service disk1(disk)[Storage] in api
+    service disk2(disk)[Storage] in api
+    service server(server)[Server] in api
+
+    db:L -- R:server
+    disk1:T --> B:server
+    disk2:T -- B:db
+```
