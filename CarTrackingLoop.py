@@ -143,13 +143,13 @@ class Experiment:
 
     def _render_frame(self, frame: TrackingFrame, frame_image: np.ndarray):
         if self.show_zones:
-            render_zones(frame, frame_image)
+            render_zones(frame, COUNT_ZONE, frame_image)
         if self.show_light:
             render_traffic_light(frame, frame_image)
         if self.show_text:
-            render_text(frame, frame_image)
+            render_text(frame, None, frame_image)
         if self.show_boxes:
-            render_boxes(frame, frame_image)
+            render_boxes(frame, None, frame_image)
         if self.show_mouse:
             self._render_mouse(frame_image)
 
