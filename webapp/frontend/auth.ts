@@ -78,18 +78,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     error: '/errorPage'
   },
   callbacks: {
-    // authorized({ auth: session, request: { nextUrl } }) {
-    authorized() {
-      // disable auth for now
-      return true;
-      // const isLoggedIn = !!session?.user;
-      // const isPublicPage = nextUrl.pathname.startsWith('/public');
+    authorized({ auth: session, request: { nextUrl } }) {
+      const isLoggedIn = !!session?.user;
+      const isPublicPage = nextUrl.pathname.startsWith('/public');
 
-      // if (isPublicPage || isLoggedIn) {
-      //   return true;
-      // }
+      if (isPublicPage || isLoggedIn) {
+        return true;
+      }
 
-      // return false; // Redirect unauthenticated users to login page
+      return false; // Redirect unauthenticated users to login page
     },
     // eslint-disable-next-line unused-imports/no-unused-vars
     async signIn() {
