@@ -14,6 +14,18 @@ import ErrorIcon from '@mui/icons-material/Error';
 import SettingsIcon from '@mui/icons-material/Settings';
 import InfoIcon from '@mui/icons-material/Info';
 
+const AUTH_DISABLED =
+  process.env.NEXT_PUBLIC_DISABLE_AUTH === 'true';
+
+  const FAKE_SESSION = {
+  user: {
+    name: 'Dev User',
+    email: 'dev@local',
+    image: null,
+  },
+  expires: '2099-01-01T00:00:00.000Z',
+};
+
 export const metadata = {
   title: 'AI Controlled Traffic Signals',
   description: 'This is a sample app built with Toolpad Core and Next.js',
@@ -72,8 +84,9 @@ const AUTHENTICATION = {
 
 
 export default async function RootLayout(props: { children: React.ReactNode }) {
-  const session = await auth();
+  const session = AUTH_DISABLED ? FAKE_SESSION : await auth();
 
+  console.log("Auth Disabled:", AUTH_DISABLED);
   return (
     <html lang="en" data-toolpad-color-scheme="light" suppressHydrationWarning>
       <head>
@@ -92,7 +105,7 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
               navigation={NAVIGATION}
               branding={BRANDING}
               session={session}
-              authentication={AUTHENTICATION}
+              authentication={AUTH_DISABLED ? undefined : AUTHENTICATION}
               theme={theme}
             >
               {props.children}

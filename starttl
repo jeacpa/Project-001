@@ -1,0 +1,1 @@
+PYTHONPATH=. python -m webapp.backend.tracking_loop.tracking_main

@@ -33,8 +33,6 @@ class TrackingManager:
     _current_frame_index: int
     _realtime_frame_index: int
     _current_frame: Optional[TrackingFrame]
-    _frame_skipping: bool
-    _use_frame: bool
     _is_live: bool
     _tracking_classes: List[int]
     _model: YOLO
@@ -52,6 +50,9 @@ class TrackingManager:
     _cursor_pos: Optional[Tuple[int, int]]
     _box_under_cursor: Optional[TrackingData]
     _selected_id: Optional[int]
+    _target_video_res: Tuple[int, int, int]
+    _target_video_fps: int
+    _frames_to_skip: int
 
     # Zone clear time is used for auto light change and can have 3 states:
     #
@@ -69,9 +70,10 @@ class TrackingManager:
         event_manager: EventManager,
         buffer_file_name: Optional[str] = None,
         output_path: Optional[str] = None,
-        frame_skipping: bool = False,
         is_live: bool = False,
         no_delay=False,
+        target_video_res: Optional[Tuple[int, int, int]] = None,
+        target_video_fps: Optional[int] = None,
     ):
 
         self._cap = cap
@@ -85,13 +87,8 @@ class TrackingManager:
         self._current_frame_index = self._starting_frame_index
         self._realtime_frame_index = self._starting_frame_index
         self._current_frame = None
-        self._frame_skipping = (
-            False  # TODO: allow this but for now it messes with rewind
-        )
-        self._use_frame = False
         self._is_live = is_live
         self._yolo_model_name = yolo_model_name
-        self._count_zone = count_zone
         self._event_manager = event_manager
         self._last_green_duration = 0.0
         self._last_red_duration = 0.0
@@ -104,6 +101,12 @@ class TrackingManager:
         self._cursor_pos = None
         self._box_under_cursor = None
         self._selected_id = None
+        self._target_video_res = target_video_res if target_video_res is not None else (self._video_width, self._video_height, 3)
+        self._target_video_fps = target_video_fps if target_video_fps is not None else int(self._video_fps)
+
+        self._frames_to_skip = round(max(1, round(self._video_fps) / self._target_video_fps) - 1)
+
+        self.set_zone(count_zone)
 
         if output_path:
             self._writer = cv2.VideoWriter(
@@ -137,6 +140,13 @@ class TrackingManager:
     @property
     def count_zone(self) -> List[Tuple[int, int]]:
         return self._count_zone
+    
+    def set_zone(self, count_zone: List[Tuple[int, int]]):
+        # Limit count zone coordinates to video dimensions
+        self._count_zone = [
+            (max(0, min(x, int(self._target_video_res[0]))), max(0, min(y, int(self._target_video_res[1]))))
+            for x, y in count_zone
+        ]
 
     def _reset_model(self):
 
@@ -302,24 +312,38 @@ class TrackingManager:
 
         return tracking_data
 
+    def _downscale_frame(self, frame_image: np.ndarray) -> np.ndarray:
+        h, w = frame_image.shape[:2]
+
+        # If already below resolution, do nothing
+        if h <= self._target_video_res[1] and w <= self._target_video_res[0]:
+            return frame_image
+
+        resized = cv2.resize(frame_image, (self._target_video_res[0], self._target_video_res[1]), interpolation=cv2.INTER_AREA)
+        return resized
+
     def _load_frame_from_stream(self):
 
         if not self._cap.isOpened():
             return
 
         # If we are frame skipping the burn a frame
-        if self._frame_skipping:
-            self._use_frame = not self._use_frame
-            if not self._use_frame:
-                self._cap.grab()
+        to_skip = self._frames_to_skip
+        while to_skip > 0:
+            self._cap.grab()
+            to_skip -= 1
 
         start = time.time()
 
         success, frame_image = self._cap.read()
+
         if not success:
             self._current_frame = None
             return
             # raise VideoReadException("Could not read from video")
+
+        # Down scale if needed
+        frame_image = self._downscale_frame(frame_image)
 
         self._realtime_frame_index += 1
 
@@ -371,8 +395,8 @@ class TrackingManager:
         end = time.time()
 
         # Artificially wait if needed to preserve video fps
-        if not self._no_delay and not self._frame_skipping and self._video_fps > 0:
-            wanted_frame_time = 1 / self._video_fps
+        if not self._no_delay:
+            wanted_frame_time = 1 / self._target_video_fps
             actual_frame_time = end - start
 
             if actual_frame_time < wanted_frame_time:
@@ -412,9 +436,6 @@ class TrackingManager:
 
         self._writer.write(frame_image)
         self._last_frame_written = frame.frame_index
-
-    def set_frame_skipping(self, frame_skipping: bool):
-        self._frame_skipping = frame_skipping
 
     def set_cursor_pos(self, pos: Optional[Tuple[int, int]]):
         self._cursor_pos = pos

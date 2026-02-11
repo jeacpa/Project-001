@@ -1,1 +1,1 @@
-PYTHONPATH=. uvicorn webapp.backend.main:app --reload
+PYTHONPATH=. uvicorn webapp.backend.web_main:app --reload --workers 1
