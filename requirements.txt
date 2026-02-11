@@ -4,3 +4,4 @@ ultralytics
 cvzone
 flet[all]
 psycopg2-binary
+shapely
