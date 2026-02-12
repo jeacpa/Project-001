@@ -72,7 +72,7 @@ BOX_TEXT_SCALE = 0.4
 
 MOUSE_COLOR = (0, 0, 255)
 
-IPC_ADDRESS = "127.0.0.1:9002" # Communicates between tracking_main and web_main
+IPC_ADDRESS = ("127.0.0.1", 9002) # Communicates between tracking_main and web_main
 
 TARGET_RESOLUTION = (1280, 720, 3)  # Width, Height, Channels
 TARGET_FPS = 15
